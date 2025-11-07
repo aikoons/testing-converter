@@ -1,0 +1,31 @@
+lib/
+node_modules/
+public/
+src/
+venv/
+venv2/
+tabula-1.0.1-jar-with-dependencies.jar
+package-lock.json
+
+
+# Python junk
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Uploads/temp/cache
+uploads/
+*.log
+*.zip
+*.tar
+*.gz
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Builds
+dist/
+build/
