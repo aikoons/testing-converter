@@ -687,7 +687,7 @@ function App() {
   const [darkMode, setDarkMode] = useState(false);
 
   // API
-  const API_BASE_URL = 'http://85.209.49.71:5005';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   // Settings
   const [pdfVersion, setPdfVersion] = useState('1.4');
