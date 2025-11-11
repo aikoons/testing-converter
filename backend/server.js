@@ -921,51 +921,122 @@ app.post('/pdf-info', upload.single('file'), async (req, res) => {
 // ADD SIGNATURE (Drag & Drop + Upload/Draw Support)
 // ============================================
 app.post('/add-signature', upload.fields([
-  { name: 'file' },
-  { name: 'signature' }
+  { name: 'file', maxCount: 1 },
+  { name: 'signature', maxCount: 1 }
 ]), async (req, res) => {
   try {
+    console.log('\n=== ADD SIGNATURE ===');
+
+
     const pdfPath = req.files['file']?.[0]?.path;
     const signPath = req.files['signature']?.[0]?.path;
-    const { x, y, page } = req.body;
+
+
+    // GET SIZE & ROTATION dari request
+    const { x, y, page, width, height, rotation } = req.body;
+
 
     if (!pdfPath || !signPath) {
       return res.status(400).json({ error: 'Missing PDF or signature image.' });
     }
 
+
+    console.log('📥 Input:', { x, y, page, width, height, rotation });
+
+
+    // Load PDF
     const pdfBytes = fs.readFileSync(pdfPath);
     const pdfDoc = await PDFDocument.load(pdfBytes);
-    const pageIndex = Math.max(0, parseInt(page || '1', 10) - 1);
+
+
+    // Get target page
+    const pageIndex = parseInt(page || '1', 10) - 1;
     const pdfPage = pdfDoc.getPages()[pageIndex];
 
+
+    if (!pdfPage) {
+      throw new Error(`Page ${page} not found`);
+    }
+
+
+    // Get page dimensions
+    const { width: pageWidth, height: pageHeight } = pdfPage.getSize();
+    console.log('📐 Page size:', { pageWidth, pageHeight });
+
+
+    // Embed signature
     const signBytes = fs.readFileSync(signPath);
     const signatureImage = await pdfDoc.embedPng(signBytes);
-    const sigWidth = 120;
-    const sigHeight = 60;
 
-    // posisi X & Y dikirim langsung dari frontend (koordinat klik)
-    const posX = x ? parseFloat(x) : pdfPage.getWidth() - sigWidth - 50;
-    const posY = y ? parseFloat(y) : 50;
 
+    // Parse signature size & rotation
+    const sigWidth = parseFloat(width) || 120;
+    const sigHeight = parseFloat(height) || 50;
+    const sigRotation = parseFloat(rotation) || 0;
+
+
+    // Convert percentage to PDF coordinates
+    const xPercent = parseFloat(x);
+    const yPercent = parseFloat(y);
+
+
+    console.log('📊 Percentage:', { xPercent, yPercent });
+    console.log('📏 Signature:', { sigWidth, sigHeight, sigRotation });
+
+
+    // PDF origin = BOTTOM-LEFT, Browser origin = TOP-LEFT
+    const pdfX = (xPercent / 100) * pageWidth - (sigWidth / 2);
+    const pdfY = pageHeight - ((yPercent / 100) * pageHeight) - (sigHeight / 2);
+
+
+    console.log('🎯 PDF coords:', { pdfX, pdfY });
+
+
+    // Draw signature dengan rotation
     pdfPage.drawImage(signatureImage, {
-      x: posX,
-      y: posY,
+      x: pdfX,
+      y: pdfY,
       width: sigWidth,
-      height: sigHeight
+      height: sigHeight,
+      rotate: {
+        type: 'degrees',
+        angle: sigRotation
+      }
     });
 
+
+    // Save
     const signedPdfBytes = await pdfDoc.save();
     const outputPath = `uploads/signed_${Date.now()}.pdf`;
     fs.writeFileSync(outputPath, signedPdfBytes);
 
+
+    console.log('✅ Success!');
+
+
+    // Send file
     res.download(outputPath, 'signed.pdf', () => {
       [pdfPath, signPath, outputPath].forEach(f => {
-        try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch {}
+        try { 
+          if (fs.existsSync(f)) fs.unlinkSync(f); 
+        } catch (e) {}
       });
     });
+
+
   } catch (error) {
-    console.error('❌ Error adding signature:', error);
-    res.status(500).json({ error: 'Failed to add signature.' });
+    console.error('❌ Error:', error);
+    res.status(500).json({ 
+      error: 'Failed to add signature.',
+      details: error.message 
+    });
+
+
+    // Cleanup on error
+    const pdfPath = req.files['file']?.[0]?.path;
+    const signPath = req.files['signature']?.[0]?.path;
+    if (pdfPath) try { fs.unlinkSync(pdfPath); } catch (e) {}
+    if (signPath) try { fs.unlinkSync(signPath); } catch (e) {}
   }
 });
 
