@@ -42,7 +42,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: '*',
     methods: ['GET', 'POST', 'OPTIONS','DELETE'],
     allowedHeaders: ['Content-Type']
 }));
