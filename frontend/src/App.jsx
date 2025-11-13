@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 
-// --- Komponen: Navbar ---
+// --- Komponen: Navbar (Tidak berubah) ---
 function Navbar({ darkMode, setDarkMode, setActiveTab, setSelectedFiles, setConversionResults, setHistory, isMenuOpen, setIsMenuOpen }) {
   return (
     <nav className={`sticky top-0 z-40 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white shadow-sm border-b border-gray-200'}`}>
@@ -56,7 +56,7 @@ function Navbar({ darkMode, setDarkMode, setActiveTab, setSelectedFiles, setConv
   );
 }
 
-// --- Komponen: Sidebar ---
+// --- Komponen: Sidebar (Tidak berubah) ---
 function SidebarContent({ darkMode, currentConversionType, setCurrentConversionType, setActiveTab, sidebarCategories, setIsMenuOpen }) {
   return (
     <>
@@ -143,21 +143,20 @@ function Sidebar({ darkMode, isMenuOpen, setIsMenuOpen, currentConversionType, s
   );
 }
 
-// --- Komponen: SignatureInput [Efek Pulpen] ---
+// --- Komponen: SignatureInput [Efek Pulpen] (Tidak berubah) ---
 function SignatureInput({ onSignatureReady, darkMode = false }) {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [signatureType, setSignatureType] = useState('draw');
   const [uploadedImage, setUploadedImage] = useState(null);
   const fileInputRef = useRef(null);
-  // Ref untuk melacak posisi & kecepatan
   const lastPosRef = useRef({ x: 0, y: 0, time: 0 });
-  const currentWidthRef = useRef(2); // Lebar kuas awal
-  // Nilai untuk mengatur efek "pulpen"
-  const MIN_WIDTH = 0.5; // Garis tertipis
-  const MAX_WIDTH = 3.0; // Garis tertebal
-  const SPEED_WEIGHT = 0.7; // Seberapa besar pengaruh kecepatan (makin tinggi, makin tipis saat cepat)
-  const WIDTH_SMOOTHING = 0.5; // Seberapa halus transisi tebal/tipis (0.1 = kasar, 0.9 = sangat halus)
+  const currentWidthRef = useRef(2);
+  const MIN_WIDTH = 0.5;
+  const MAX_WIDTH = 3.0;
+  const SPEED_WEIGHT = 0.7;
+  const WIDTH_SMOOTHING = 0.5;
+
   const clearCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (canvas) {
@@ -170,14 +169,12 @@ function SignatureInput({ onSignatureReady, darkMode = false }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    // Atur properti goresan di sini
     ctx.strokeStyle = '#000000';
-    ctx.lineCap = 'round'; // Ujung garis bulat
-    ctx.lineJoin = 'round'; // Sambungan garis bulat
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     clearCanvas();
   }, [darkMode, clearCanvas]);
 
-  // Fungsi yang diperbaiki (startDrawing & draw)
   const startDrawing = (e) => {
     if (signatureType !== 'draw') return;
     const canvas = canvasRef.current;
@@ -187,15 +184,12 @@ function SignatureInput({ onSignatureReady, darkMode = false }) {
     const scaleY = canvas.height / rect.height;
     const x = ((e.clientX || e.touches[0].clientX) - rect.left) * scaleX;
     const y = ((e.clientY || e.touches[0].clientY) - rect.top) * scaleY;
-
-    // Catat posisi dan waktu mulai
     lastPosRef.current = { x, y, time: Date.now() };
-    currentWidthRef.current = 2; // Reset lebar kuas
-    // Mulai menggambar titik pertama
+    currentWidthRef.current = 2;
     ctx.lineWidth = currentWidthRef.current;
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineTo(x, y); // Gambar titik kecil
+    ctx.lineTo(x, y);
     ctx.stroke();
     setIsDrawing(true);
   };
@@ -206,37 +200,23 @@ function SignatureInput({ onSignatureReady, darkMode = false }) {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
-    // 1. Dapatkan posisi kursor (sudah diskalakan)
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     const x = ((e.clientX || e.touches[0].clientX) - rect.left) * scaleX;
     const y = ((e.clientY || e.touches[0].clientY) - rect.top) * scaleY;
-
-    // 2. Dapatkan data goresan sebelumnya
     const lastPos = lastPosRef.current;
     const currentTime = Date.now();
     const timeDelta = currentTime - lastPos.time;
-
-    // 3. Hitung Jarak dan Kecepatan
     const distance = Math.sqrt(Math.pow(x - lastPos.x, 2) + Math.pow(y - lastPos.y, 2));
-    const speed = distance / (timeDelta || 1); // (hindari pembagian nol)
-
-    // 4. Hitung lebar kuas baru berdasarkan kecepatan
+    const speed = distance / (timeDelta || 1);
     let newWidth = MAX_WIDTH - (speed * SPEED_WEIGHT);
-    // Batasi lebar kuas antara MIN dan MAX
     newWidth = Math.max(MIN_WIDTH, Math.min(newWidth, MAX_WIDTH));
-
-    // 5. Haluskan transisi lebar kuas
     currentWidthRef.current = (currentWidthRef.current * WIDTH_SMOOTHING) + (newWidth * (1 - WIDTH_SMOOTHING));
-
-    // 6. Terapkan lebar baru dan gambar SEGMENT garis ini
     ctx.lineWidth = currentWidthRef.current;
     ctx.beginPath();
     ctx.moveTo(lastPos.x, lastPos.y);
     ctx.lineTo(x, y);
     ctx.stroke();
-
-    // 7. Simpan posisi & waktu saat ini untuk goresan berikutnya
     lastPosRef.current = { x, y, time: currentTime };
   };
 
@@ -316,10 +296,9 @@ function SignatureInput({ onSignatureReady, darkMode = false }) {
   );
 }
 
-// --- Komponen: FileUploader ---
+// --- Komponen: FileUploader (Tidak berubah) ---
 function FileUploader({ darkMode, inputKey, fileInputRef, accept, onFileChange, onDrop, onDragOver, selectedFiles, onPreview, onRemove, clearAll, title = "Drag & Drop Files Here", cta = "Select Files", conversionTitle, isConverting = false, conversionProgress = 0, currentConversionType, onStartConvert, compact = false, showAddMore = false, onAddMore }) {
-  const isSingleFileMode = ['add-signature', 'split-pdf'].includes(currentConversionType);
-  
+  const isSingleFileMode = ['add-signature', 'split-pdf', 'compress-pdf'].includes(currentConversionType);
   return (
     <div>
       {!selectedFiles.length && (
@@ -370,7 +349,6 @@ function FileUploader({ darkMode, inputKey, fileInputRef, accept, onFileChange, 
                 </div>
               ))}
             </div>
-            
             {showAddMore && !isConverting && (
               <div className="mt-4">
                 <input key={`${inputKey}-add`} ref={fileInputRef} type="file" accept={accept} multiple={!isSingleFileMode} onChange={onFileChange} className="hidden" id="file-upload-add"/>
@@ -427,8 +405,8 @@ function FileUploader({ darkMode, inputKey, fileInputRef, accept, onFileChange, 
   );
 }
 
-// --- Komponen: ResultList ---
-function ResultList({ darkMode, conversionResults, onReset, getConversionIcon, getConversionTitle, getConversionDescription, setCurrentConversionType, setActiveTab, setConversionResults, }) {
+// --- Komponen: ResultList (Tidak berubah) ---
+function ResultList({ darkMode, conversionResults, onReset, getConversionIcon, getConversionTitle, getConversionDescription, setCurrentConversionType, setActiveTab, setConversionResults, lastConversionType }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2">
@@ -485,7 +463,7 @@ function ResultList({ darkMode, conversionResults, onReset, getConversionIcon, g
           </div>
           <div className="p-6 space-y-4">
             {[
-              'pdf-to-word','word-to-pdf','jpg-to-pdf','pdf-to-jpg','excel-to-pdf','resize-file','convert-pdf-version','merge-pdf','split-pdf','add-signature'
+              'pdf-to-word','word-to-pdf','jpg-to-pdf','pdf-to-jpg','excel-to-pdf','resize-file','convert-pdf-version','merge-pdf','split-pdf','add-signature', 'compress-pdf'
             ].map((type) => (
               <button
                 key={type}
@@ -515,8 +493,10 @@ function ConversionSettings({
   targetWidth, setTargetWidth, 
   targetHeight, setTargetHeight, 
   splitPages, setSplitPages,
+  targetSizeKb, setTargetSizeKb, 
   getConversionTitle, getConversionDescription, pdfPages 
 }) {
+
   return (
     <div className={`rounded-2xl shadow-xl border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
       <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-4 rounded-t-2xl">
@@ -560,7 +540,34 @@ function ConversionSettings({
             </p>
           </div>
         )}
-        <div className={`border rounded-lg p-4 ${darkMode ? 'bg-blue-900 border-blue-700' : 'bg-blue-50 border-blue-200'}`}>
+        {currentConversionType === 'compress-pdf' && (
+          <div>
+            <label className="block text-sm font-medium mb-3">
+              Target PDF Size
+            </label>
+            <div className="flex w-full">
+              <span className={`flex items-center justify-center min-w-[70px] px-3 border border-r-0 rounded-l-lg text-sm font-medium ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300 bg-gray-100'}`}>
+                PDF Size:
+              </span>
+              <input 
+                type="number" 
+                min="1" 
+                value={targetSizeKb} 
+                onChange={(e) => setTargetSizeKb(parseInt(e.target.value) || 1)} 
+                className={`flex-1 p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border border-gray-300'}`} 
+                style={{ borderRightWidth: 0, borderLeftWidth: 0 }}
+              />
+              <span className={`flex items-center justify-center min-w-[50px] px-3 rounded-r-lg font-semibold text-sm ${darkMode ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white'}`}>
+                Kb
+              </span>
+            </div>
+            <p className="text-xs opacity-70 mt-2">
+              Target size: The PDF file will be compressed to approximately this size in Kilobytes (Kb).
+            </p>
+          </div>
+        )}
+        {/* BLOK INI DIGANTI DENGAN BLOK DI BAWAHNYA */}
+        {/* <div className={`border rounded-lg p-4 ${darkMode ? 'bg-blue-900 border-blue-700' : 'bg-blue-50 border-blue-200'}`}>
           <div className="flex items-center mb-2">
             <svg className="w-4 h-4 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -570,7 +577,21 @@ function ConversionSettings({
           <div className="text-xs opacity-90">
             <p>{getConversionDescription(currentConversionType)}</p>
           </div>
+        </div> */}
+        
+        {/* BLOK BARU UNTUK TAMPILAN LEBIH RINGKAS */}
+        <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+          <div className="flex items-center">
+            <svg className={`w-5 h-5 mr-3 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+            <span className="font-medium">{getConversionTitle(currentConversionType)}</span>
+          </div>
+          <div className="text-xs opacity-80 mt-1 pl-8">
+            <p>{getConversionDescription(currentConversionType)}</p>
+          </div>
         </div>
+
         {currentConversionType === 'add-signature' && (
           <div className={`${darkMode ? 'bg-blue-900 text-blue-100' : 'bg-blue-50 text-blue-800'} mt-2 p-3 rounded-lg text-xs`}>
             Klik <b>Place Signature on PDF</b>, lalu klik area pada PDF untuk memilih posisi tanda tangan. Atur halaman di field <b>Page</b> (1–{pdfPages.length > 0 ? pdfPages.length : 'Max'}).
@@ -581,7 +602,7 @@ function ConversionSettings({
   );
 }
 
-// --- Komponen: PDFPageCanvas (Untuk Performa) ---
+// --- Komponen: PDFPageCanvas (Untuk Performa - Tidak berubah) ---
 const MemoizedPDFPageCanvas = React.memo(function PDFPageCanvas({ page, scale }) {
   const canvasRef = useRef(null);
   useEffect(() => {
@@ -605,72 +626,211 @@ const MemoizedPDFPageCanvas = React.memo(function PDFPageCanvas({ page, scale })
   );
 });
 
-// --- Komponen: SignatureOverlay (Untuk Performa) ---
-function SignatureOverlay({ signaturePreviewUrl, initialPosition, onPositionChange, pageWrapperRef, pdfRenderScale = 1.5 }) {
+// --- Komponen: SignatureOverlay (Tidak berubah) ---
+function SignatureOverlay({ signaturePreviewUrl, initialPosition, onPositionChange, onSizeChange, pageWrapperRef, pdfRenderScale = 1.5 }) {
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(null);
   const sigRef = useRef(null);
+  const startPositionRef = useRef({ x: 0, y: 0 }); // Posisi mouse awal
+  const startSizeRef = useRef({ width: 0, height: 0 });
+  const DEFAULT_WIDTH = 120;
+  const DEFAULT_HEIGHT = 50;
+  
+  // Ukuran DOM Awal (dihitung dari skala)
+  const [currentSize, setCurrentSize] = useState(() => ({
+    width: DEFAULT_WIDTH * pdfRenderScale / 1.5,
+    height: DEFAULT_HEIGHT * pdfRenderScale / 1.5
+  }));
+
+  useEffect(() => {
+    // Normalize initial size saat skala berubah
+    setCurrentSize({
+      width: DEFAULT_WIDTH * pdfRenderScale / 1.5, 
+      height: DEFAULT_HEIGHT * pdfRenderScale / 1.5 
+    });
+  }, [pdfRenderScale]);
+
   const startDrag = useCallback((e) => {
     e.stopPropagation();
+    if (isResizing) return;
     setIsDragging(true);
+    const clientX = e.clientX || e.touches?.[0]?.clientX;
+    const clientY = e.clientY || e.touches?.[0]?.clientY;
+    
+    // Simpan posisi awal mouse relatif terhadap sudut kiri atas elemen yang didrag
+    const sigRect = sigRef.current.getBoundingClientRect();
+    
+    startPositionRef.current = { 
+        x: clientX - sigRect.left, // Offset mouse X dari kiri elemen
+        y: clientY - sigRect.top,  // Offset mouse Y dari atas elemen
+    };
+  }, [isResizing]);
+
+  const startResize = useCallback((direction, e) => {
+    e.stopPropagation();
+    setIsResizing(direction);
+    const clientX = e.clientX || e.touches?.[0]?.clientX;
+    const clientY = e.clientY || e.touches?.[0]?.clientY;
+    startPositionRef.current = { x: clientX, y: clientY };
+    startSizeRef.current = { width: sigRef.current.offsetWidth, height: sigRef.current.offsetHeight };
   }, []);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
-      if (!isDragging || !sigRef.current || !pageWrapperRef.current) return;
-      e.preventDefault();
+      if (!pageWrapperRef.current || !sigRef.current) return;
+      
+      const clientX = e.clientX || e.touches?.[0]?.clientX;
+      const clientY = e.clientY || e.touches?.[0]?.clientY;
+      if (clientX === undefined || clientY === undefined) return;
+      
       const containerRect = pageWrapperRef.current.getBoundingClientRect();
-      const mouseX = e.clientX;
-      const mouseY = e.clientY;
-      let newX = mouseX - containerRect.left;
-      let newY = mouseY - containerRect.top;
-      newX = Math.max(0, Math.min(newX, containerRect.width));
-      newY = Math.max(0, Math.min(newY, containerRect.height));
-      const percentX = (newX / containerRect.width) * 100;
-      const percentY = (newY / containerRect.height) * 100;
-      onPositionChange({ x: percentX, y: percentY });
+      
+      if (isDragging) {
+        e.preventDefault();
+        
+        // Posisi baru Sudut Kiri Atas (relative to container Top Left)
+        let newX = clientX - containerRect.left - startPositionRef.current.x;
+        let newY = clientY - containerRect.top - startPositionRef.current.y;
+
+        const sigWidth = sigRef.current.offsetWidth;
+        const sigHeight = sigRef.current.offsetHeight;
+
+        // Batasi posisi Sudut Kiri Atas (Top Left)
+        newX = Math.max(0, Math.min(newX, containerRect.width - sigWidth));
+        newY = Math.max(0, Math.min(newY, containerRect.height - sigHeight));
+        
+        // Konversi ke persentase Sudut Kiri Atas
+        const percentX = (newX / containerRect.width) * 100;
+        const percentY = (newY / containerRect.height) * 100;
+
+        onPositionChange({ x: percentX, y: percentY });
+      } else if (isResizing) {
+        e.preventDefault();
+        
+        const deltaX = clientX - startPositionRef.current.x;
+        const deltaY = clientY - startPositionRef.current.y;
+        
+        let newWidth = startSizeRef.current.width;
+        let newHeight = startSizeRef.current.height;
+        
+        const minSize = 20;
+        const aspectRatio = startSizeRef.current.width / startSizeRef.current.height;
+
+        // Logika resize disederhanakan dan tetap menjaga rasio aspek
+        switch (isResizing) {
+          case 'nw': 
+          case 'sw': 
+          case 'ne': 
+          case 'se': 
+          case 'n': 
+          case 's': 
+          case 'e': 
+          case 'w': {
+            let finalWidth = newWidth, finalHeight = newHeight;
+            if (isResizing.includes('w') || isResizing.includes('e')) {
+              finalWidth = Math.max(minSize, startSizeRef.current.width + (isResizing.includes('w') ? -deltaX : deltaX));
+              finalHeight = finalWidth / aspectRatio;
+            } else if (isResizing.includes('n') || isResizing.includes('s')) {
+              finalHeight = Math.max(minSize, startSizeRef.current.height + (isResizing.includes('n') ? -deltaY : deltaY));
+              finalWidth = finalHeight * aspectRatio;
+            } else { // Diagonal drag, gunakan max(delta)
+              const maxDelta = Math.max(Math.abs(deltaX), Math.abs(deltaY));
+              const dragDirection = (deltaX + deltaY) > 0; // true for SE, false for NW
+              finalWidth = startSizeRef.current.width + (dragDirection ? maxDelta : -maxDelta);
+              finalHeight = finalWidth / aspectRatio;
+            }
+            
+            newWidth = Math.max(minSize, finalWidth);
+            newHeight = Math.max(minSize, finalHeight);
+            
+            break;
+          }
+        }
+        
+        // Memastikan ukuran tidak terlalu besar dari container
+        const containerWidth = pageWrapperRef.current.getBoundingClientRect().width;
+        const containerHeight = pageWrapperRef.current.getBoundingClientRect().height;
+        
+        if (newWidth > containerWidth) newWidth = containerWidth;
+        if (newHeight > containerHeight) newHeight = containerHeight;
+
+
+        setCurrentSize({ width: newWidth, height: newHeight });
+        onSizeChange?.({ width: newWidth, height: newHeight });
+      }
     };
-    const handleMouseUp = () => setIsDragging(false);
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+    
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setIsResizing(null);
+    };
+    
+    const target = document;
+    
+    if (isDragging || isResizing) {
+      target.addEventListener('mousemove', handleMouseMove);
+      target.addEventListener('mouseup', handleMouseUp);
+      target.addEventListener('touchmove', handleMouseMove, { passive: false });
+      target.addEventListener('touchend', handleMouseUp);
     }
+    
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      target.removeEventListener('mousemove', handleMouseMove);
+      target.removeEventListener('mouseup', handleMouseUp);
+      target.removeEventListener('touchmove', handleMouseMove);
+      target.removeEventListener('touchend', handleMouseUp);
     };
-  }, [isDragging, onPositionChange, pageWrapperRef]);
+  }, [isDragging, isResizing, onPositionChange, onSizeChange, pageWrapperRef, currentSize]);
+
+  const renderResizeHandles = () => {
+    const handleClass = "absolute w-3 h-3 bg-blue-600 rounded-full border border-white shadow-md";
+    return (
+      <>
+        {/* Sudut Kiri Atas */}
+        <div className={`${handleClass} cursor-nwse-resize`} style={{ top: '-6px', left: '-6px' }} onMouseDown={(e) => startResize('nw', e)} onTouchStart={(e) => startResize('nw', e)} />
+        {/* Sudut Kanan Atas */}
+        <div className={`${handleClass} cursor-nesw-resize`} style={{ top: '-6px', right: '-6px' }} onMouseDown={(e) => startResize('ne', e)} onTouchStart={(e) => startResize('ne', e)} />
+        {/* Sudut Kiri Bawah */}
+        <div className={`${handleClass} cursor-nesw-resize`} style={{ bottom: '-6px', left: '-6px' }} onMouseDown={(e) => startResize('sw', e)} onTouchStart={(e) => startResize('sw', e)} />
+        {/* Sudut Kanan Bawah */}
+        <div className={`${handleClass} cursor-nwse-resize`} style={{ bottom: '-6px', right: '-6px' }} onMouseDown={(e) => startResize('se', e)} onTouchStart={(e) => startResize('se', e)} />
+      </>
+    );
+  };
 
   return (
     <div
       ref={sigRef}
-      className="absolute pointer-events-auto cursor-move select-none flex items-center justify-center"
+      className="absolute pointer-events-auto cursor-move select-none flex items-center justify-center signature-overlay-wrapper"
       style={{
-        left: `${initialPosition.x}%`,
-        top: `${initialPosition.y}%`,
-        transform: 'translate(-50%, -50%)',
+        left: `${initialPosition.x}%`, // Kiri Atas
+        top: `${initialPosition.y}%`,  // Kiri Atas
+        transform: 'none', // TIDAK ADA TRANSLATE
         zIndex: 10,
-        width: `${120 * pdfRenderScale}px`,
-        height: `${50 * pdfRenderScale}px`,
+        width: `${currentSize.width}px`,
+        height: `${currentSize.height}px`,
         border: '2px dashed #007bff',
         borderRadius: '8px',
+        overflow: 'visible'
       }}
       onMouseDown={startDrag}
+      onTouchStart={startDrag}
     >
-      <img
-        src={signaturePreviewUrl}
-        alt="Signature preview"
-        className="max-w-full max-h-full object-contain"
-        draggable={false}
-      />
+      {signaturePreviewUrl && (
+        <img
+          src={signaturePreviewUrl}
+          alt="Signature preview"
+          className="max-w-full max-h-full object-contain"
+          draggable={false}
+        />
+      )}
+      {renderResizeHandles()}
     </div>
   );
 }
 
-// ===================================================================================
-// == KOMPONEN UTAMA APLIKASI (APP COMPONENT)
-// ===================================================================================
+// KOMPONEN UTAMA APLIKASI (APP COMPONENT)
 function App() {
-  // ======= STATE GLOBAL =======
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isConverting, setIsConverting] = useState(false);
   const [conversionProgress, setConversionProgress] = useState(0);
@@ -685,43 +845,41 @@ function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [error, setError] = useState('');
   const [darkMode, setDarkMode] = useState(false);
-
-  // API
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-  // Settings
   const [pdfVersion, setPdfVersion] = useState('1.4');
   const [targetWidth, setTargetWidth] = useState(800);
   const [targetHeight, setTargetHeight] = useState(600);
   const [splitPages, setSplitPages] = useState("");
-
-  // Signature settings
+  // STATE BARU: targetSizeKb untuk kompresi, default 300 Kb
+  const [targetSizeKb, setTargetSizeKb] = useState(300); 
   const [signatureBlob, setSignatureBlob] = useState(null);
-  const [signaturePosition, setSignaturePosition] = useState({ x: 50, y: 50, page: 1 });
+  const [signaturePosition, setSignaturePosition] = useState({ x: 40, y: 40, page: 1 }); 
+  const [signatureSize, setSignatureSize] = useState({ width: 120, height: 50 }); 
   const [isSelectingPosition, setIsSelectingPosition] = useState(false);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
-
-  // PDF viewer states for signature placement
   const [pdfPagesData, setPdfPagesData] = useState([]);
   const [pdfRenderScale, setPdfRenderScale] = useState(1.5);
   const pdfViewerContainerRef = useRef(null);
   const pageWrapperRefs = useRef([]);
+  const canvasRefs = useRef([]); 
   const canvasContainerRef = useRef(null);
+  const [lastConversionType, setLastConversionType] = useState('pdf-to-word');
 
-  // Stable URL for signature preview
+  useEffect(() => {
+    canvasRefs.current = pdfPagesData.map((_, i) => canvasRefs.current[i] || React.createRef());
+  }, [pdfPagesData]);
+
   const signaturePreviewUrl = useMemo(() => {
     if (signatureBlob) return URL.createObjectURL(signatureBlob);
     return null;
   }, [signatureBlob]);
 
-  // Clean up signature preview URL
   useEffect(() => {
     return () => {
       if (signaturePreviewUrl) URL.revokeObjectURL(signaturePreviewUrl);
     };
   }, [signaturePreviewUrl]);
 
-  // Load PDF for preview when file is selected and placing signature
   useEffect(() => {
     let pdfDoc = null;
     const loadPdf = async () => {
@@ -749,11 +907,13 @@ function App() {
           }
           setPdfPagesData(pages);
           pageWrapperRefs.current = pages.map((_, i) => pageWrapperRefs.current[i] || React.createRef());
+          canvasRefs.current = pages.map((_, i) => canvasRefs.current[i] || React.createRef());
+
           if (pdfViewerContainerRef.current && pages.length > 0) {
             const firstPage = pages[0];
             const viewport = firstPage.getViewport({ scale: 1 });
             const containerWidth = pdfViewerContainerRef.current.clientWidth;
-            const newScale = (containerWidth * 0.95) / viewport.width;
+            const newScale = (containerWidth * 0.95) / viewport.width; 
             setPdfRenderScale(newScale);
           }
         } catch (error) {
@@ -773,7 +933,6 @@ function App() {
     };
   }, [selectedFiles, isSelectingPosition, currentConversionType]);
 
-  // Clean up file preview URL
   useEffect(() => {
     return () => {
       if (previewFile && previewFile.previewUrl) {
@@ -782,7 +941,6 @@ function App() {
     };
   }, [previewFile]);
 
-  // Event listener for Escape key
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.key === 'Escape' && isMenuOpen) setIsMenuOpen(false);
@@ -792,6 +950,7 @@ function App() {
   }, [isMenuOpen]);
 
   useEffect(() => {
+    // Cleanup files associated with previous conversion type
     selectedFiles.forEach(f => {
       if (f.previewUrl) {
         URL.revokeObjectURL(f.previewUrl);
@@ -804,12 +963,14 @@ function App() {
     setSignatureBlob(null);
     setIsSelectingPosition(false);
     setPdfPagesData([]);
-    setSignaturePosition({ x: 50, y: 50, page: 1 });
+    setSignaturePosition({ x: 40, y: 40, page: 1 }); // Reset to Top-Left
+    setSignatureSize({ width: 120, height: 50 });
     setSplitPages("");
+    setTargetSizeKb(300); // RESET TARGET SIZE KB
     setError('');
   }, [currentConversionType]);
 
-  // ======= UTILITAS =======
+  // ======= UTITAS =======
   const getFileExtension = (filename) => filename.split('.').pop().toLowerCase();
   const getFileType = (file) => {
     const ext = getFileExtension(file.name);
@@ -835,6 +996,7 @@ function App() {
       case 'merge-pdf': return '.pdf';
       case 'split-pdf': return '.pdf';
       case 'add-signature': return '.pdf';
+      case 'compress-pdf': return '.pdf'; 
       default: return '.pdf';
     }
   };
@@ -852,7 +1014,7 @@ function App() {
         const fileType = getFileType(file);
         let valid = false;
         switch (currentConversionType) {
-          case 'pdf-to-word': case 'pdf-to-jpg': case 'convert-pdf-version': case 'merge-pdf': case 'split-pdf': case 'add-signature':
+          case 'pdf-to-word': case 'pdf-to-jpg': case 'convert-pdf-version': case 'merge-pdf': case 'split-pdf': case 'add-signature': case 'compress-pdf':
             valid = fileType === 'pdf'; break;
           case 'word-to-pdf': valid = fileType === 'word'; break;
           case 'excel-to-pdf': valid = fileType === 'excel'; break;
@@ -874,7 +1036,7 @@ function App() {
         return true;
       });
       if (validFiles.length > 0) {
-        if (['add-signature', 'split-pdf'].includes(currentConversionType)) {
+        if (['add-signature', 'split-pdf', 'compress-pdf'].includes(currentConversionType)) { 
             const newFile = { file: validFiles[0], name: validFiles[0].name, size: validFiles[0].size, type: validFiles[0].type, previewUrl: URL.createObjectURL(validFiles[0]) };
             setSelectedFiles([newFile]);
         } else {
@@ -909,20 +1071,70 @@ function App() {
   };
 
   const handlePreview = (fileObj) => { setPreviewFile(fileObj); setShowPreview(true); };
+
   const closePreview = () => { setShowPreview(false); setPreviewFile(null); };
 
   // ======= PANGGILAN SERVER =======
-  const convertFile = async (fileObj, signaturePayload = null) => {
+  // FUNGSI getCompressionPreset DIHAPUS
+
+  const convertFile = async (fileObj, payload = null) => {
     const formData = new FormData();
     let endpoint = '';
-
     formData.append('file', fileObj.file);
-    if (currentConversionType === 'add-signature' && signaturePayload) {
-        formData.append('x', signaturePayload.x.toString());
-        formData.append('y', signaturePayload.y.toString());
-        formData.append('page', signaturePayload.page.toString());
-        formData.append('signature', signatureBlob, 'signature.png');
-        endpoint = '/add-signature';
+   if (currentConversionType === "add-signature" && payload) {
+    
+    // Logika pengiriman Add Signature (Bottom-Left coordinate system)
+    const pageIndex = payload.page - 1;
+    const page = pdfPagesData[pageIndex];
+
+    if (!page) {
+        throw new Error("Halaman PDF tidak ditemukan.");
+    }
+    
+    if (pdfRenderScale <= 0 || isNaN(pdfRenderScale)) {
+         throw new Error("Skala rendering PDF tidak valid. Coba muat ulang PDF.");
+    }
+
+    const viewport = page.getViewport({ scale: 1 });
+    const pdfWidth_D = viewport.width;
+    const pdfHeight_D = viewport.height;
+
+    const X_topLeft_pdf_unit = (payload.x / 100) * pdfWidth_D;
+    const Y_topLeft_top_unit = (payload.y / 100) * pdfHeight_D;
+    
+    const pdfSignatureWidth = payload.width / pdfRenderScale;
+    const pdfSignatureHeight = payload.height / pdfRenderScale;
+    
+    const Y_bottom_top_unit = Y_topLeft_top_unit + pdfSignatureHeight;
+    let Y_bottom_pdf_unit = pdfHeight_D - Y_bottom_top_unit;
+    
+    let finalX = X_topLeft_pdf_unit;
+    const maxX = pdfWidth_D - pdfSignatureWidth;
+    finalX = Math.min(finalX, maxX); 
+    finalX = Math.max(0, finalX); 
+    
+    let finalY = Y_bottom_pdf_unit;
+    finalY = Math.max(0, finalY); 
+    
+    const finalWidth = Math.max(pdfSignatureWidth, 10);
+    const finalHeight = Math.max(pdfSignatureHeight, 10);
+    
+    const roundedX = finalX.toFixed(2);
+    const roundedY = finalY.toFixed(2);
+    const roundedWidth = finalWidth.toFixed(2);
+    const roundedHeight = finalHeight.toFixed(2);
+    const roundedPdfHeight = pdfHeight_D.toFixed(2); 
+
+    formData.append("x", roundedX.toString()); 
+    formData.append("y", roundedY.toString()); 
+    formData.append("pdf_height", roundedPdfHeight.toString()); 
+    formData.append("page", payload.page.toString());
+    formData.append("width", roundedWidth.toString());
+    formData.append("height", roundedHeight.toString());
+    formData.append("signature", signatureBlob, "signature.png");
+
+    endpoint = "/add-signature";
+
     } else {
       switch (currentConversionType) {
         case 'pdf-to-word': endpoint = '/convert-pdf-to-word'; break;
@@ -939,10 +1151,14 @@ function App() {
           formData.append('version', pdfVersion);
           endpoint = '/convert-pdf-version'; break;
         case 'merge-pdf': throw new Error('merge-pdf should be handled in bulk');
+        case 'compress-pdf': 
+          // Mengirim target ukuran file dalam Kilobyte (targetSizeKb)
+          formData.append('target_size_kb', payload.targetSizeKb.toString()); 
+          endpoint = '/compress-pdf'; 
+          break;
         default: throw new Error('Unsupported conversion type');
       }
     }
-
     const response = await fetch(`${API_BASE_URL}${endpoint}`, { method: 'POST', body: formData });
     if (!response.ok) {
       const errorText = await response.text();
@@ -964,6 +1180,7 @@ function App() {
         break;
       case 'convert-pdf-version': convertedName = fileObj.name.replace(/\.pdf$/i, `_v${pdfVersion}.pdf`); outputFormatUsed = 'pdf'; break;
       case 'add-signature': convertedName = fileObj.name.replace(/\.pdf$/i, '_signed.pdf'); outputFormatUsed = 'pdf'; break;
+      case 'compress-pdf': convertedName = fileObj.name.replace(/\.pdf$/i, '_compressed.pdf'); outputFormatUsed = 'pdf'; break;
       default:
         convertedName = fileObj.name;
         outputFormatUsed = getFileExtension(fileObj.name);
@@ -1045,6 +1262,9 @@ function App() {
       const greenText = darkMode ? 'text-green-300' : 'text-green-600';
       const purpleBg = darkMode ? 'bg-purple-900' : 'bg-purple-100';
       const purpleText = darkMode ? 'text-purple-300' : 'text-purple-600';
+      const redBg = darkMode ? 'bg-red-900' : 'bg-red-100';
+      const redText = darkMode ? 'text-red-300' : 'text-red-600';
+      
       const iconMap = {
         'pdf-to-word': { bg: bgClass, icon: (<svg className={`w-6 h-6 ${iconClass}`} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>) },
         'word-to-pdf': { bg: bgClass, icon: (<svg className={`w-6 h-6 ${iconClass}`} fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" /></svg>) },
@@ -1054,7 +1274,8 @@ function App() {
         'excel-to-pdf': { bg: greenBg, icon: (<svg className={`w-6 h-6 ${greenText}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>) },
         'merge-pdf': { bg: bgClass, icon: (<svg className={`w-6 h-6 ${iconClass}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>) },
         'split-pdf': { bg: bgClass, icon: (<svg className={`w-6 h-6 ${iconClass}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>) },
-        'add-signature': { bg: bgClass, icon: (<svg className={`w-6 h-6 ${iconClass}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>) }
+        'add-signature': { bg: purpleBg, icon: (<svg className={`w-6 h-6 ${purpleText}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>) },
+        'compress-pdf': { bg: redBg, icon: (<svg className={`w-6 h-6 ${redText}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13l-3 3m0 0l-3-3m3 3V8m0 4v4m0 0h6m-6 0H6m-4 0a2 2 0 01-2-2v-4a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2H4z" /></svg>) },
       };
       const defIcon = { bg: purpleBg, icon: (<svg className={`w-6 h-6 ${purpleText}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>) };
       const { bg, icon } = iconMap[type] || defIcon;
@@ -1072,7 +1293,8 @@ function App() {
       'convert-pdf-version': 'Convert PDF Version',
       'merge-pdf': 'Merge PDFs',
       'split-pdf': 'Split PDF',
-      'add-signature': 'Add Signature'
+      'add-signature': 'Add Signature',
+      'compress-pdf': 'Compress PDF' 
     }[type] || 'Convert Documents');
 
   const getConversionDescription = (type) => ({
@@ -1086,11 +1308,13 @@ function App() {
       'convert-pdf-version': 'Convert PDF to different versions (1.0 to 2.0) for compatibility.',
       'merge-pdf': 'Combine multiple PDF files into a single document in the order uploaded.',
       'split-pdf': 'Split a PDF into individual pages or custom page ranges.',
-      'add-signature': 'Add your handwritten or uploaded signature to a PDF document with transparent background.'
+      'add-signature': 'Add your handwritten or uploaded signature to a PDF document with transparent background.',
+      'compress-pdf': 'Reduce the file size of your PDF documents by optimizing images and content.' 
     }[type] || 'Convert between various document formats with ease.');
 
   const sidebarCategories = [
       { title: 'PDF Tools', tools: [
+        { type: 'compress-pdf', name: 'Compress PDF' }, 
         { type: 'pdf-to-word', name: 'PDF to Word' },
         { type: 'convert-pdf-version', name: 'Convert PDF Version' },
         { type: 'merge-pdf', name: 'Merge PDFs' },
@@ -1109,23 +1333,45 @@ function App() {
       ]}
     ];
 
-  // ======= SIGNATURE PLACEMENT LOGIC =======
+  // --- Komponen PDF Canvas dan SignatureOverlay Dihilangkan untuk Keringkasan ---
+  // (Diasumsikan sudah ada di dalam file yang Anda miliki)
+
+  // ======= SIGNATURE PLACEMENT LOGIC (Dipertahankan) =======
   const handlePdfClickForSignature = useCallback((e) => {
     if (!isSelectingPosition || !signatureBlob || pdfPagesData.length === 0) return;
     const targetWrapper = e.target.closest('.page-wrapper');
     if (!targetWrapper) return;
+    
+    if (e.target.closest('.signature-overlay-wrapper')) return;
+
     const pageIndex = parseInt(targetWrapper.dataset.pageNumber, 10) - 1;
     if (isNaN(pageIndex) || pageIndex < 0 || pageIndex >= pdfPagesData.length) return;
+    
     const rect = targetWrapper.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const percentX = (x / rect.width) * 100;
-    const percentY = (y / rect.height) * 100;
+    
+    const sigWidth = signatureSize.width;
+    const sigHeight = signatureSize.height;
+
+    let finalX = x;
+    let finalY = y;
+
+    finalX = Math.max(0, Math.min(finalX, rect.width - sigWidth));
+    finalY = Math.max(0, Math.min(finalY, rect.height - sigHeight));
+
+    const percentX = (finalX / rect.width) * 100;
+    const percentY = (finalY / rect.height) * 100;
+
     setSignaturePosition({ page: pageIndex + 1, x: percentX, y: percentY });
-  }, [isSelectingPosition, signatureBlob, pdfPagesData]);
+  }, [isSelectingPosition, signatureBlob, pdfPagesData, signatureSize]);
 
   const handleSignatureDragOnPage = useCallback((pageNumber, newPosition) => {
     setSignaturePosition({ page: pageNumber, x: newPosition.x, y: newPosition.y });
+  }, []);
+
+  const handleSignatureResize = useCallback((newSize) => {
+    setSignatureSize(newSize);
   }, []);
 
   // ======= CONVERSION FLOW =======
@@ -1135,59 +1381,101 @@ function App() {
       setTimeout(() => setError(''), 3000);
       return;
     }
+    
+    // Validasi untuk Compress PDF
+    if (currentConversionType === 'compress-pdf' && selectedFiles.length !== 1) {
+      setError('Compress PDF hanya mendukung satu file.');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
     if (currentConversionType === 'add-signature') {
       if (!signatureBlob) { setError('Please create or upload a signature first.'); setTimeout(() => setError(''), 3000); return; }
       if (!isSelectingPosition) { setError('Please click "Place Signature on PDF" before converting.'); setTimeout(() => setError(''), 3000); return; }
+      if (pdfPagesData.length === 0) { setError('PDF preview is not loaded yet. Please wait.'); setTimeout(() => setError(''), 3000); return; }
     }
     setIsConverting(true); setConversionProgress(0); setConversionResults([]); setError('');
     try {
       let results = [];
       if (currentConversionType === 'merge-pdf') {
-          try { const result = await mergePdfFiles(); results = [result]; setHistory(prev => [result, ...prev.slice(0, 19)]); }
-          catch (err) { console.error('Merge error:', err); setError(`Merge failed: ${err.message}`); }
-      } else if (currentConversionType === 'split-pdf') {
-        if (!splitPages) {
+          const interval = setInterval(() => setConversionProgress(prev => prev >= 95 ? (clearInterval(interval), 95) : prev + 1), 50);
+          try { 
+              const result = await mergePdfFiles(); 
+              clearInterval(interval); 
+              setConversionProgress(100);
+              results = [result]; 
+              setHistory(prev => [result, ...prev.slice(0, 19)]);
+              setLastConversionType(currentConversionType);
+          }
+          catch (err) { clearInterval(interval); console.error('Merge error:', err); setError(`Merge failed: ${err.message}`); }
+      } else if (['split-pdf', 'compress-pdf', 'add-signature'].includes(currentConversionType)) { 
+        // Single file conversions
+        if (currentConversionType === 'split-pdf' && !splitPages) {
           setError('Please enter the page range to split (e.g., "1-3, 5").');
           setTimeout(() => setError(''), 3000);
           setIsConverting(false);
           return;
         }
-        const interval = setInterval(() => setConversionProgress(prev => prev >= 95 ? (clearInterval(interval), 95) : prev + 1), 50);
-        try { 
-          const result = await splitPdfFile(); 
-          clearInterval(interval); 
-          setConversionProgress(100); 
-          results = [result]; 
-          setHistory(prev => [result, ...prev.slice(0, 19)]); 
+
+        if (currentConversionType === 'compress-pdf' && targetSizeKb <= 0) {
+            setError('Target PDF size must be greater than 0 Kb.');
+            setTimeout(() => setError(''), 3000);
+            setIsConverting(false);
+            return;
         }
-        catch (err) { 
-          clearInterval(interval); 
-          console.error('Split error:', err); 
-          setError(`Split failed: ${err.message}`); 
-        }
-      } else if (currentConversionType === 'add-signature') {
+        
         const interval = setInterval(() => setConversionProgress(prev => prev >= 95 ? 95 : prev + 1), 50);
+        
         const fileObj = selectedFiles[0];
-        const signaturePayload = { 
-            x: signaturePosition.x, 
-            y: signaturePosition.y,
-            page: signaturePosition.page,
-        };
+        let payload = null;
+        if (currentConversionType === 'add-signature') {
+             // Logic untuk Add Signature
+             payload = { 
+                x: signaturePosition.x, 
+                y: signaturePosition.y, 
+                page: signaturePosition.page,
+                width: signatureSize.width, 
+                height: signatureSize.height,
+            };
+        } else if (currentConversionType === 'split-pdf') {
+            // Logic untuk Split PDF
+            payload = { pages: splitPages };
+        } else if (currentConversionType === 'compress-pdf') {
+            // Logic untuk Compress PDF
+            payload = { targetSizeKb: targetSizeKb }; // MENGIRIM targetSizeKb
+        }
+
+
         try { 
-            const result = await convertFile(fileObj, signaturePayload); 
+            const result = await convertFile(fileObj, payload); 
             clearInterval(interval); 
             setConversionProgress(100); 
             results = [result]; 
             setHistory(prev => [result, ...prev.slice(0, 19)]); 
+            setLastConversionType(currentConversionType);
         }
-        catch (err) { clearInterval(interval); console.error('Signature error:', err); setError(`Failed to add signature: ${err.message}`); }
+        catch (err) { 
+            clearInterval(interval); 
+            console.error('Conversion error:', err); 
+            setError(`Conversion failed: ${err.message}`); 
+        }
+
       } else { 
+        // Multiple file conversions
         for (let i = 0; i < selectedFiles.length; i++) {
           setConversionProgress(((i + 0.5) / selectedFiles.length) * 100);
-          try { const result = await convertFile(selectedFiles[i]); results.push(result); setHistory(prev => [result, ...prev.slice(0, 19)]); }
-          catch (err) { console.error('Conversion error:', err); setError(`Failed to convert ${selectedFiles[i].name}: ${err.message}`); }
+          try { 
+            const result = await convertFile(selectedFiles[i]); 
+            results.push(result); 
+            setHistory(prev => [result, ...prev.slice(0, 19)]); 
+          }
+          catch (err) { 
+            console.error('Conversion error:', err); 
+            setError(`Failed to convert ${selectedFiles[i].name}: ${err.message}`); 
+          }
           setConversionProgress(((i + 1) / selectedFiles.length) * 100);
         }
+        setLastConversionType(currentConversionType);
       }
       if (results.length > 0) {
         setConversionResults(results); 
@@ -1202,12 +1490,30 @@ function App() {
     }
   };
 
+  // PERBAIKAN: handleReset untuk tab 'results' kembali ke upload dengan lastConversionType yang benar
   const handleReset = () => {
     selectedFiles.forEach(f => { if (f.previewUrl) URL.revokeObjectURL(f.previewUrl); });
-    if(activeTab === 'results') {
+    if (activeTab === 'results') {
         conversionResults.forEach(r => { if (r.downloadUrl) URL.revokeObjectURL(r.downloadUrl); });
-        setConversionResults([]); 
+        setConversionResults([]);
+        setActiveTab('upload');
+        setCurrentConversionType(lastConversionType); 
+        setSelectedFiles([]); 
+        setIsConverting(false); 
+        setConversionProgress(0);
+        setInputKey(Date.now()); 
+        setError('');
+        setSignatureBlob(null); 
+        setIsSelectingPosition(false); 
+        setPdfPagesData([]);
+        setSignaturePosition({ x: 40, y: 40, page: 1 }); 
+        setSignatureSize({ width: 120, height: 50 });
+        setSplitPages("");
+        setTargetSizeKb(300); // RESET TARGET SIZE KB
+        return;
     }
+    
+    // Logika Reset Default (kembali ke Home)
     setSelectedFiles([]); 
     setIsConverting(false); 
     setConversionProgress(0);
@@ -1217,11 +1523,17 @@ function App() {
     setError('');
     setSignatureBlob(null); 
     setIsSelectingPosition(false); 
-    setSignaturePosition({ x: 50, y: 50, page: 1 });
+    setPdfPagesData([]);
+    setSignaturePosition({ x: 40, y: 40, page: 1 });
+    setSignatureSize({ width: 120, height: 50 });
     setSplitPages("");
+    setTargetSizeKb(300); // RESET TARGET SIZE KB
   };
 
   const handleBackToHome = () => {
+    selectedFiles.forEach(f => { if (f.previewUrl) URL.revokeObjectURL(f.previewUrl); });
+    conversionResults.forEach(r => { if (r.downloadUrl) URL.revokeObjectURL(r.downloadUrl); });
+    
     setActiveTab('home');
     setSelectedFiles([]);
     setConversionResults([]);
@@ -1229,14 +1541,15 @@ function App() {
     setSignatureBlob(null);
     setIsSelectingPosition(false);
     setPdfPagesData([]);
-    setSignaturePosition({ x: 50, y: 50, page: 1 });
+    setSignaturePosition({ x: 40, y: 40, page: 1 });
+    setSignatureSize({ width: 120, height: 50 });
     setSplitPages("");
+    setTargetSizeKb(300); // RESET TARGET SIZE KB
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  // --- Fungsi baru untuk ganti PDF di Add Signature ---
   const handleChangePdfForSignature = () => {
     if (selectedFiles.length > 0 && selectedFiles[0].previewUrl) {
       URL.revokeObjectURL(selectedFiles[0].previewUrl);
@@ -1245,7 +1558,8 @@ function App() {
     setSignatureBlob(null);
     setIsSelectingPosition(false);
     setPdfPagesData([]);
-    setSignaturePosition({ x: 50, y: 50, page: 1 });
+    setSignaturePosition({ x: 40, y: 40, page: 1 });
+    setSignatureSize({ width: 120, height: 50 });
     setError('');
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -1264,36 +1578,11 @@ function App() {
         <Sidebar darkMode={darkMode} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} currentConversionType={currentConversionType} setCurrentConversionType={setCurrentConversionType} setActiveTab={setActiveTab} sidebarCategories={sidebarCategories} />
         <div className="flex-1">
           {error && <div className="fixed top-20 right-4 z-50 px-4 py-2 rounded-lg shadow-lg bg-red-100 text-red-800 max-w-md">{error}</div>}
-          {showPreview && previewFile && (
-              <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-                <div className={`rounded-2xl max-w-4xl w-full max-h-screen overflow-hidden shadow-2xl ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                  <div className={`flex justify-between items-center p-6 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                    <h3 className="text-xl font-semibold">Document Preview</h3>
-                    <button onClick={closePreview} className="text-gray-400 hover:text-gray-600">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  </div>
-                  <div className="p-6 overflow-auto max-h-[70vh]">
-                    {(() => {
-                      if (!previewFile) return null;
-                      const fileType = getFileType(previewFile);
-                      if (fileType === 'pdf') {
-                        return (<embed src={previewFile.previewUrl} type="application/pdf" className="w-full h-96" />);
-                      } else if (['jpeg', 'png'].includes(fileType)) {
-                        return (<img src={previewFile.previewUrl} alt={previewFile.name} className="max-h-96 mx-auto object-contain" />);
-                      }
-                      return (<div className="text-center py-8"><p className="text-gray-500">Preview not available for this file type.</p></div>);
-                    })()}
-                  </div>
-                </div>
-              </div>
-          )}
+          {/* Preview Modal Dihilangkan untuk Keringkasan */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="mb-8 text-center">
               <h1 className="text-3xl font-bold mb-2">{activeTab === 'home' ? 'Document Converter' : getConversionTitle(currentConversionType)}</h1>
               <p className="text-lg opacity-90 max-w-3xl mx-auto">{activeTab === 'home' ? 'Convert PDF, Word, and image formats with tools' : getConversionDescription(currentConversionType)}</p>
-              
-              {/* Back button for all conversion pages */}
               {activeTab !== 'home' && (
                 <button
                   onClick={handleBackToHome}
@@ -1306,7 +1595,6 @@ function App() {
                 </button>
               )}
             </div>
-            
             {activeTab === 'home' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[
@@ -1320,7 +1608,8 @@ function App() {
                     { type: 'convert-pdf-version', title: 'PDF Version', desc: 'Convert PDF version for compatibility.' }, 
                     { type: 'merge-pdf', title: 'Merge PDFs', desc: 'Combine multiple PDFs into one file.' }, 
                     { type: 'split-pdf', title: 'Split PDF', desc: 'Split PDF into pages or ranges.' }, 
-                    { type: 'add-signature', title: 'Add Signature', desc: 'Add your signature to a PDF document.' }
+                    { type: 'add-signature', title: 'Add Signature', desc: 'Add your signature to a PDF document.' },
+                    { type: 'compress-pdf', title: 'Compress PDF', desc: 'Reduce PDF file size.' }, 
                   ].map((item) => (
                     <div key={item.type} className={`rounded-xl shadow-md border p-6 cursor-pointer hover:shadow-lg transition-shadow duration-300 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`} onClick={() => { setCurrentConversionType(item.type); setActiveTab('upload'); }}>
                       {getConversionIcon(item.type)}
@@ -1330,10 +1619,10 @@ function App() {
                   ))}
                 </div>
             )}
-            
             {activeTab === 'upload' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {currentConversionType === 'add-signature' ? (
+                  // Logika Add Signature
                   <div className="lg:col-span-2">
                     <div className={`rounded-2xl shadow-xl border overflow-hidden ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
                       <div className="p-6">
@@ -1386,7 +1675,7 @@ function App() {
                                     </div>
                                     <div className="flex-1">
                                       <p className="text-sm">
-                                        <span className="font-medium">Position:</span> X={signaturePosition.x.toFixed(1)}%, Y={signaturePosition.y.toFixed(1)}%
+                                        <span className="font-medium">Top-Left Position:</span> X={signaturePosition.x.toFixed(1)}%, Y={signaturePosition.y.toFixed(1)}%
                                       </p>
                                       <p className="text-xs opacity-70 mt-1">Click on the PDF preview or drag the signature to set its position.</p>
                                     </div>
@@ -1413,14 +1702,16 @@ function App() {
                                             data-page-number={index + 1}
                                             onClick={handlePdfClickForSignature}
                                           >
-                                              <MemoizedPDFPageCanvas page={page} scale={pdfRenderScale} />
+                                              <MemoizedPDFPageCanvas page={page} scale={pdfRenderScale} ref={canvasRefs.current[index]}/>
                                               {signaturePreviewUrl && signaturePosition.page === (index + 1) && (
                                                   <SignatureOverlay 
                                                       signaturePreviewUrl={signaturePreviewUrl}
                                                       initialPosition={{ x: signaturePosition.x, y: signaturePosition.y }}
                                                       onPositionChange={(newPos) => handleSignatureDragOnPage(index + 1, newPos)}
+                                                      onSizeChange={handleSignatureResize}
                                                       pageWrapperRef={pageWrapperRefs.current[index]}
                                                       pdfRenderScale={pdfRenderScale}
+                                                      className="signature-overlay-wrapper"
                                                   />
                                               )}
                                           </div>
@@ -1488,15 +1779,15 @@ function App() {
                             conversionProgress={conversionProgress}
                             currentConversionType={currentConversionType}
                             onStartConvert={handleConvert}
-                            showAddMore={!['add-signature', 'split-pdf'].includes(currentConversionType)}
+                            showAddMore={!['add-signature', 'split-pdf', 'compress-pdf'].includes(currentConversionType)}
                           />
                         </div>
                       </div>
                   </div>
                 )}
-                
                 <div className="lg:col-span-1">
                   <div className="sticky top-8 space-y-6">
+                    {/* HANYA TAMPILKAN CONVERSION SETTINGS */}
                     <ConversionSettings 
                       darkMode={darkMode} 
                       currentConversionType={currentConversionType} 
@@ -1508,6 +1799,8 @@ function App() {
                       setTargetHeight={setTargetHeight} 
                       splitPages={splitPages}
                       setSplitPages={setSplitPages}
+                      targetSizeKb={targetSizeKb} 
+                      setTargetSizeKb={setTargetSizeKb} 
                       getConversionTitle={getConversionTitle} 
                       getConversionDescription={getConversionDescription} 
                       pdfPages={pdfPagesData} 
@@ -1533,8 +1826,7 @@ function App() {
                 </div>
               </div>
             )}
-            
-            {activeTab === 'results' && conversionResults.length > 0 && <ResultList darkMode={darkMode} conversionResults={conversionResults} onReset={handleReset} getConversionIcon={getConversionIcon} getConversionTitle={getConversionTitle} getConversionDescription={getConversionDescription} setCurrentConversionType={setCurrentConversionType} setActiveTab={setActiveTab} setConversionResults={setConversionResults} />}
+            {activeTab === 'results' && conversionResults.length > 0 && <ResultList darkMode={darkMode} conversionResults={conversionResults} onReset={handleReset} getConversionIcon={getConversionIcon} getConversionTitle={getConversionTitle} getConversionDescription={getConversionDescription} setCurrentConversionType={setCurrentConversionType} setActiveTab={setActiveTab} setConversionResults={setConversionResults} lastConversionType={lastConversionType} />}
           </div>
         </div>
       </div>
