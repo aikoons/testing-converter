@@ -1430,58 +1430,62 @@ function App() {
           }
           catch (err) { clearInterval(interval); console.error('Merge error:', err); setError(`Merge failed: ${err.message}`); }
       } else if (['split-pdf', 'compress-pdf', 'add-signature'].includes(currentConversionType)) { 
-        // Single file conversions
-        if (currentConversionType === 'split-pdf' && !splitPages) {
-          setError('Please enter the page range to split (e.g., "1-3, 5").');
-          setTimeout(() => setError(''), 3000);
-          setIsConverting(false);
-          return;
-        }
+  // Single file conversions
+  if (currentConversionType === 'split-pdf' && !splitPages) {
+    setError('Please enter the page range to split (e.g., "1-3, 5").');
+    setTimeout(() => setError(''), 3000);
+    setIsConverting(false);
+    return;
+  }
 
-        if (currentConversionType === 'compress-pdf' && targetSizeKb <= 0) {
-            setError('Target PDF size must be greater than 0 Kb.');
-            setTimeout(() => setError(''), 3000);
-            setIsConverting(false);
-            return;
-        }
-        
-        const interval = setInterval(() => setConversionProgress(prev => prev >= 95 ? 95 : prev + 1), 50);
-        
-        const fileObj = selectedFiles[0];
-        let payload = null;
-        if (currentConversionType === 'add-signature') {
-             // Logic untuk Add Signature
-             payload = { 
-                x: signaturePosition.x, 
-                y: signaturePosition.y, 
-                page: signaturePosition.page,
-                width: signatureSize.width, 
-                height: signatureSize.height,
-            };
-        } else if (currentConversionType === 'split-pdf') {
-            // Logic untuk Split PDF
-            payload = { pages: splitPages };
-        } else if (currentConversionType === 'compress-pdf') {
-            // Logic untuk Compress PDF
-            payload = { targetSizeKb: targetSizeKb }; // MENGIRIM targetSizeKb
-        }
+  if (currentConversionType === 'compress-pdf' && targetSizeKb <= 0) {
+      setError('Target PDF size must be greater than 0 Kb.');
+      setTimeout(() => setError(''), 3000);
+      setIsConverting(false);
+      return;
+  }
+  
+  const interval = setInterval(() => setConversionProgress(prev => prev >= 95 ? 95 : prev + 1), 50);
+  
+  try { 
+      let result;
+      
+      if (currentConversionType === 'split-pdf') {
+          // Panggil fungsi khusus untuk split PDF
+          result = await splitPdfFile();
+      } else {
+          // Untuk add-signature dan compress-pdf
+          const fileObj = selectedFiles[0];
+          let payload = null;
+          
+          if (currentConversionType === 'add-signature') {
+              payload = { 
+                  x: signaturePosition.x, 
+                  y: signaturePosition.y, 
+                  page: signaturePosition.page,
+                  width: signatureSize.width, 
+                  height: signatureSize.height,
+              };
+          } else if (currentConversionType === 'compress-pdf') {
+              payload = { targetSizeKb: targetSizeKb };
+          }
+          
+          result = await convertFile(fileObj, payload);
+      }
+      
+      clearInterval(interval); 
+      setConversionProgress(100); 
+      results = [result]; 
+      setHistory(prev => [result, ...prev.slice(0, 19)]); 
+      setLastConversionType(currentConversionType);
+  }
+  catch (err) { 
+      clearInterval(interval); 
+      console.error('Conversion error:', err); 
+      setError(`Conversion failed: ${err.message}`); 
+  }
 
-
-        try { 
-            const result = await convertFile(fileObj, payload); 
-            clearInterval(interval); 
-            setConversionProgress(100); 
-            results = [result]; 
-            setHistory(prev => [result, ...prev.slice(0, 19)]); 
-            setLastConversionType(currentConversionType);
-        }
-        catch (err) { 
-            clearInterval(interval); 
-            console.error('Conversion error:', err); 
-            setError(`Conversion failed: ${err.message}`); 
-        }
-
-      } else { 
+} else { 
         // Multiple file conversions
         for (let i = 0; i < selectedFiles.length; i++) {
           setConversionProgress(((i + 0.5) / selectedFiles.length) * 100);
