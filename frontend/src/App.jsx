@@ -1235,17 +1235,29 @@ function App() {
     const formData = new FormData();
     formData.append('file', fileObj.file);
     formData.append('pages', splitPages);
-    const response = await fetch(`${API_BASE_URL}/split-pdf`, { method: 'POST', body: formData });
+    const response = await fetch(`${API_BASE_URL}/split-pdf`, { 
+      method: 'POST', 
+      body: formData 
+    });
+
     if (!response.ok) {
+      let errorMessage = `Split failed: ${response.statusText}`;
       try {
-        const errorJson = await response.json();
-        throw new Error(errorJson.error || `Split failed: ${response.statusText}`);
+        const contentType = response.headers.get('content-type');  // ✅ CEK content-type DULU
+        if (contentType && contentType.includes('application/json')) {
+          const errorJson = await response.json();  // ✅ Parse JSON hanya jika content-type = JSON
+          errorMessage = errorJson.error || errorMessage;
+        } else {
+          const errorText = await response.text();  // ✅ Parse text jika bukan JSON
+          errorMessage = errorText || errorMessage;
+        }
       } catch(e) {
-        const errorText = await response.text();
-        throw new Error(`Split failed: ${errorText || e.message}`);
+        console.error('Error parsing error response:', e);
       }
+      throw new Error(errorMessage);
     }
-    const blob = await response.blob();
+
+    const blob = await response.blob();  // ✅ Langsung baca blob karena response belum di-consume
     const downloadUrl = URL.createObjectURL(blob);
     let convertedName, outputFormatUsed;
     if (blob.type.includes('zip')) {
