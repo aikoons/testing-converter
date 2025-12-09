@@ -430,7 +430,7 @@ function ResultList({ darkMode, conversionResults, onReset, getConversionIcon, g
                     <div className="flex-1">
                       <div className="flex items-center mb-2">
                         <svg className="w-5 h-5 opacity-80 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2" />
                         </svg>
                         <span className="font-medium">{result.convertedName}</span>
                       </div>
@@ -566,20 +566,7 @@ function ConversionSettings({
             </p>
           </div>
         )}
-        {/* BLOK INI DIGANTI DENGAN BLOK DI BAWAHNYA */}
-        {/* <div className={`border rounded-lg p-4 ${darkMode ? 'bg-blue-900 border-blue-700' : 'bg-blue-50 border-blue-200'}`}>
-          <div className="flex items-center mb-2">
-            <svg className="w-4 h-4 text-blue-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
-            <span className="font-medium">{getConversionTitle(currentConversionType)}</span>
-          </div>
-          <div className="text-xs opacity-90">
-            <p>{getConversionDescription(currentConversionType)}</p>
-          </div>
-        </div> */}
         
-        {/* BLOK BARU UNTUK TAMPILAN LEBIH RINGKAS */}
         <div className={`p-4 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
           <div className="flex items-center">
             <svg className={`w-5 h-5 mr-3 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -626,7 +613,7 @@ const MemoizedPDFPageCanvas = React.memo(function PDFPageCanvas({ page, scale })
   );
 });
 
-// --- Komponen: SignatureOverlay (Tidak berubah) ---
+// --- Komponen: SignatureOverlay (DIUBAH agar posisi sesuai canvas, bukan wrapper) ---
 function SignatureOverlay({ signaturePreviewUrl, initialPosition, onPositionChange, onSizeChange, pageWrapperRef, pdfRenderScale = 1.5 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(null);
@@ -636,19 +623,43 @@ function SignatureOverlay({ signaturePreviewUrl, initialPosition, onPositionChan
   const DEFAULT_WIDTH = 120;
   const DEFAULT_HEIGHT = 50;
   
-  // Ukuran DOM Awal (dihitung dari skala)
+  // Ukuran DOM Awal (dihitung dari pdfRenderScale agar ukuran awal proporsional)
   const [currentSize, setCurrentSize] = useState(() => ({
-    width: DEFAULT_WIDTH * pdfRenderScale / 1.5,
-    height: DEFAULT_HEIGHT * pdfRenderScale / 1.5
+    width: DEFAULT_WIDTH,
+    height: DEFAULT_HEIGHT
   }));
 
+  // Menyimpan posisi dalam pixel relatif terhadap wrapper (kita akan menghitung dari canvas)
+  const [pixelPos, setPixelPos] = useState({ left: 0, top: 0 });
+
+  // Update ukuran awal berdasarkan pdfRenderScale jika diperlukan
   useEffect(() => {
-    // Normalize initial size saat skala berubah
-    setCurrentSize({
-      width: DEFAULT_WIDTH * pdfRenderScale / 1.5, 
-      height: DEFAULT_HEIGHT * pdfRenderScale / 1.5 
-    });
+    // Keep stored logical size unchanged (we treat currentSize as DOM px),
+    // but callers might want scale-specific initial sizing; leaving default fixed is fine.
+    setCurrentSize(prev => ({ ...prev }));
   }, [pdfRenderScale]);
+
+  // Compute pixel-based top/left from initialPosition (percent) using the actual canvas rect.
+  useEffect(() => {
+    const updatePos = () => {
+      const wrapper = pageWrapperRef?.current;
+      if (!wrapper) return;
+      const canvas = wrapper.querySelector && wrapper.querySelector('canvas');
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const canvasRect = canvas ? canvas.getBoundingClientRect() : wrapperRect;
+      const leftPx = (initialPosition.x / 100) * canvasRect.width + (canvasRect.left - wrapperRect.left);
+      const topPx = (initialPosition.y / 100) * canvasRect.height + (canvasRect.top - wrapperRect.top);
+      setPixelPos({ left: leftPx, top: topPx });
+    };
+    updatePos();
+    window.addEventListener('resize', updatePos);
+    return () => window.removeEventListener('resize', updatePos);
+  }, [initialPosition.x, initialPosition.y, pageWrapperRef]);
+
+  useEffect(() => {
+    // Keep signatureSize in sync to parent when changed by user resize
+    onSizeChange?.({ width: currentSize.width, height: currentSize.height });
+  }, [currentSize.width, currentSize.height, onSizeChange]);
 
   const startDrag = useCallback((e) => {
     e.stopPropagation();
@@ -683,26 +694,38 @@ function SignatureOverlay({ signaturePreviewUrl, initialPosition, onPositionChan
       const clientY = e.clientY || e.touches?.[0]?.clientY;
       if (clientX === undefined || clientY === undefined) return;
       
-      const containerRect = pageWrapperRef.current.getBoundingClientRect();
+      const wrapper = pageWrapperRef.current;
+      const canvas = wrapper.querySelector && wrapper.querySelector('canvas');
+      const containerRect = canvas ? canvas.getBoundingClientRect() : wrapper.getBoundingClientRect();
+      const wrapperRect = wrapper.getBoundingClientRect();
       
       if (isDragging) {
         e.preventDefault();
         
-        // Posisi baru Sudut Kiri Atas (relative to container Top Left)
-        let newX = clientX - containerRect.left - startPositionRef.current.x;
-        let newY = clientY - containerRect.top - startPositionRef.current.y;
+        // Posisi baru Sudut Kiri Atas (relative to canvas left/top within wrapper)
+        // compute newX relative to wrapper's left (we place overlay inside wrapper)
+        let newX = clientX - wrapperRect.left - startPositionRef.current.x;
+        let newY = clientY - wrapperRect.top - startPositionRef.current.y;
 
-        const sigWidth = sigRef.current.offsetWidth;
-        const sigHeight = sigRef.current.offsetHeight;
+        // But we must clamp relative to canvas area within wrapper:
+        const canvasOffsetLeft = (canvas ? (containerRect.left - wrapperRect.left) : 0);
+        const canvasOffsetTop = (canvas ? (containerRect.top - wrapperRect.top) : 0);
 
-        // Batasi posisi Sudut Kiri Atas (Top Left)
-        newX = Math.max(0, Math.min(newX, containerRect.width - sigWidth));
-        newY = Math.max(0, Math.min(newY, containerRect.height - sigHeight));
+        // now compute limits based on canvas size and offsets
+        const minX = canvasOffsetLeft;
+        const minY = canvasOffsetTop;
+        const maxX = canvasOffsetLeft + containerRect.width - sigRef.current.offsetWidth;
+        const maxY = canvasOffsetTop + containerRect.height - sigRef.current.offsetHeight;
+
+        newX = Math.max(minX, Math.min(newX, maxX));
+        newY = Math.max(minY, Math.min(newY, maxY));
         
-        // Konversi ke persentase Sudut Kiri Atas
-        const percentX = (newX / containerRect.width) * 100;
-        const percentY = (newY / containerRect.height) * 100;
+        // Konversi ke persentase berdasarkan canvas ukuran
+        const percentX = ((newX - canvasOffsetLeft) / containerRect.width) * 100;
+        const percentY = ((newY - canvasOffsetTop) / containerRect.height) * 100;
 
+        // Update pixel pos (for visual) and notify parent with percent coords
+        setPixelPos({ left: newX, top: newY });
         onPositionChange({ x: percentX, y: percentY });
       } else if (isResizing) {
         e.preventDefault();
@@ -717,43 +740,28 @@ function SignatureOverlay({ signaturePreviewUrl, initialPosition, onPositionChan
         const aspectRatio = startSizeRef.current.width / startSizeRef.current.height;
 
         // Logika resize disederhanakan dan tetap menjaga rasio aspek
-        switch (isResizing) {
-          case 'nw': 
-          case 'sw': 
-          case 'ne': 
-          case 'se': 
-          case 'n': 
-          case 's': 
-          case 'e': 
-          case 'w': {
-            let finalWidth = newWidth, finalHeight = newHeight;
-            if (isResizing.includes('w') || isResizing.includes('e')) {
-              finalWidth = Math.max(minSize, startSizeRef.current.width + (isResizing.includes('w') ? -deltaX : deltaX));
-              finalHeight = finalWidth / aspectRatio;
-            } else if (isResizing.includes('n') || isResizing.includes('s')) {
-              finalHeight = Math.max(minSize, startSizeRef.current.height + (isResizing.includes('n') ? -deltaY : deltaY));
-              finalWidth = finalHeight * aspectRatio;
-            } else { // Diagonal drag, gunakan max(delta)
-              const maxDelta = Math.max(Math.abs(deltaX), Math.abs(deltaY));
-              const dragDirection = (deltaX + deltaY) > 0; // true for SE, false for NW
-              finalWidth = startSizeRef.current.width + (dragDirection ? maxDelta : -maxDelta);
-              finalHeight = finalWidth / aspectRatio;
-            }
-            
-            newWidth = Math.max(minSize, finalWidth);
-            newHeight = Math.max(minSize, finalHeight);
-            
-            break;
-          }
-        }
-        
-        // Memastikan ukuran tidak terlalu besar dari container
-        const containerWidth = pageWrapperRef.current.getBoundingClientRect().width;
-        const containerHeight = pageWrapperRef.current.getBoundingClientRect().height;
-        
-        if (newWidth > containerWidth) newWidth = containerWidth;
-        if (newHeight > containerHeight) newHeight = containerHeight;
+        let finalWidth = newWidth;
+        let finalHeight = newHeight;
 
+        if (isResizing.includes('w') || isResizing.includes('e')) {
+          finalWidth = Math.max(minSize, startSizeRef.current.width + (isResizing.includes('w') ? -deltaX : deltaX));
+          finalHeight = finalWidth / aspectRatio;
+        } else if (isResizing.includes('n') || isResizing.includes('s')) {
+          finalHeight = Math.max(minSize, startSizeRef.current.height + (isResizing.includes('n') ? -deltaY : deltaY));
+          finalWidth = finalHeight * aspectRatio;
+        } else {
+          const maxDelta = Math.max(Math.abs(deltaX), Math.abs(deltaY));
+          const dragDirection = (deltaX + deltaY) > 0; // true for SE, false for NW
+          finalWidth = startSizeRef.current.width + (dragDirection ? maxDelta : -maxDelta);
+          finalHeight = finalWidth / aspectRatio;
+        }
+
+        newWidth = Math.max(minSize, finalWidth);
+        newHeight = Math.max(minSize, finalHeight);
+        
+        // Memastikan ukuran tidak terlalu besar dari canvas
+        if (newWidth > containerRect.width) newWidth = containerRect.width;
+        if (newHeight > containerRect.height) newHeight = containerRect.height;
 
         setCurrentSize({ width: newWidth, height: newHeight });
         onSizeChange?.({ width: newWidth, height: newHeight });
@@ -803,8 +811,8 @@ function SignatureOverlay({ signaturePreviewUrl, initialPosition, onPositionChan
       ref={sigRef}
       className="absolute pointer-events-auto cursor-move select-none flex items-center justify-center signature-overlay-wrapper"
       style={{
-        left: `${initialPosition.x}%`, // Kiri Atas
-        top: `${initialPosition.y}%`,  // Kiri Atas
+        left: `${pixelPos.left}px`, // sekarang pakai pixel relatif terhadap wrapper (dibantu perhitungan di useEffect)
+        top: `${pixelPos.top}px`,
         transform: 'none', // TIDAK ADA TRANSLATE
         zIndex: 10,
         width: `${currentSize.width}px`,
@@ -822,6 +830,7 @@ function SignatureOverlay({ signaturePreviewUrl, initialPosition, onPositionChan
           alt="Signature preview"
           className="max-w-full max-h-full object-contain"
           draggable={false}
+          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
         />
       )}
       {renderResizeHandles()}
@@ -1099,12 +1108,16 @@ function App() {
     const pdfWidth_D = viewport.width;
     const pdfHeight_D = viewport.height;
 
+    // payload.x/y are percentages relative to rendered canvas area (top-left origin)
+    // Convert percent->pdf units using intrinsic pdf dimensions
     const X_topLeft_pdf_unit = (payload.x / 100) * pdfWidth_D;
     const Y_topLeft_top_unit = (payload.y / 100) * pdfHeight_D;
     
+    // payload.width/height are DOM pixels -> convert to pdf units by dividing by render scale
     const pdfSignatureWidth = payload.width / pdfRenderScale;
     const pdfSignatureHeight = payload.height / pdfRenderScale;
     
+    // Convert top-left to bottom-left coordinate used by backend
     const Y_bottom_top_unit = Y_topLeft_top_unit + pdfSignatureHeight;
     let Y_bottom_pdf_unit = pdfHeight_D - Y_bottom_top_unit;
     
@@ -1336,7 +1349,7 @@ function App() {
   // --- Komponen PDF Canvas dan SignatureOverlay Dihilangkan untuk Keringkasan ---
   // (Diasumsikan sudah ada di dalam file yang Anda miliki)
 
-  // ======= SIGNATURE PLACEMENT LOGIC (Dipertahankan) =======
+  // ======= SIGNATURE PLACEMENT LOGIC (Dipertahankan dan DISESUAIKAN) =======
   const handlePdfClickForSignature = useCallback((e) => {
     if (!isSelectingPosition || !signatureBlob || pdfPagesData.length === 0) return;
     const targetWrapper = e.target.closest('.page-wrapper');
@@ -1347,9 +1360,16 @@ function App() {
     const pageIndex = parseInt(targetWrapper.dataset.pageNumber, 10) - 1;
     if (isNaN(pageIndex) || pageIndex < 0 || pageIndex >= pdfPagesData.length) return;
     
-    const rect = targetWrapper.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Use actual canvas bounding rect (if canvas centered inside wrapper, wrapper can be wider)
+    const canvasEl = targetWrapper.querySelector('canvas');
+    const rect = canvasEl ? canvasEl.getBoundingClientRect() : targetWrapper.getBoundingClientRect();
+    const rectLeft = rect.left;
+    const rectTop = rect.top;
+    const rectWidth = rect.width;
+    const rectHeight = rect.height;
+
+    const x = e.clientX - rectLeft;
+    const y = e.clientY - rectTop;
     
     const sigWidth = signatureSize.width;
     const sigHeight = signatureSize.height;
@@ -1357,11 +1377,11 @@ function App() {
     let finalX = x;
     let finalY = y;
 
-    finalX = Math.max(0, Math.min(finalX, rect.width - sigWidth));
-    finalY = Math.max(0, Math.min(finalY, rect.height - sigHeight));
+    finalX = Math.max(0, Math.min(finalX, rectWidth - sigWidth));
+    finalY = Math.max(0, Math.min(finalY, rectHeight - sigHeight));
 
-    const percentX = (finalX / rect.width) * 100;
-    const percentY = (finalY / rect.height) * 100;
+    const percentX = (finalX / rectWidth) * 100;
+    const percentY = (finalY / rectHeight) * 100;
 
     setSignaturePosition({ page: pageIndex + 1, x: percentX, y: percentY });
   }, [isSelectingPosition, signatureBlob, pdfPagesData, signatureSize]);
@@ -1371,6 +1391,7 @@ function App() {
   }, []);
 
   const handleSignatureResize = useCallback((newSize) => {
+    // newSize is in DOM pixels; store to state so conversion uses it
     setSignatureSize(newSize);
   }, []);
 
