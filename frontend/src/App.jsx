@@ -1063,7 +1063,7 @@ function App() {
     } catch (err) {
       console.error('File change error:', err);
       setError('Gagal memproses file. Silakan coba lagi.');
-      setTimeout(() => setError(''), 3000);
+      setTimeout(() => setError(''), 300000);
     }
   };
 
@@ -1545,12 +1545,12 @@ function App() {
         setConversionResults(results); 
         setActiveTab('results'); 
       } else if (!error) { 
-        setError('All conversions failed. Please try again.'); setTimeout(() => setError(''), 4000);
+        setError('All conversions failed. Please try again.'); setTimeout(() => setError(''), 300000);
       }
     } catch (err) {
       setError(`Terjadi kesalahan saat konversi: ${err.message}`); console.error(err);
     } finally {
-      setIsConverting(false); setTimeout(() => setConversionProgress(0), 1000);
+      setIsConverting(false); setTimeout(() => setConversionProgress(0), 300000);
     }
   };
 
