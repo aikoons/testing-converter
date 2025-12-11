@@ -1182,7 +1182,7 @@ function App() {
           {
           const qualityKey = (payload && payload.qualityKey) ? payload.qualityKey : compressionQuality; // <-- PERUBAHAN
           const ghostscriptValue = qualitySettings[qualityKey]?.value || '/ebook'; // <-- PERUBAHAN
-          formData.append('quality_preset', ghostscriptValue); // <-- PERUBAHAN
+          formData.append('quality', ghostscriptValue); // <-- PERUBAHAN
           endpoint = '/compress-pdf';
         }
         break;
