@@ -493,7 +493,8 @@ function ConversionSettings({
   targetWidth, setTargetWidth, 
   targetHeight, setTargetHeight, 
   splitPages, setSplitPages,
-  targetSizeKb, setTargetSizeKb, 
+  compressionQuality, setCompressionQuality, // <-- BARU: compressionQuality
+  qualitySettings, // <-- BARU: qualitySettings
   getConversionTitle, getConversionDescription, pdfPages 
 }) {
 
@@ -543,26 +544,21 @@ function ConversionSettings({
         {currentConversionType === 'compress-pdf' && (
           <div>
             <label className="block text-sm font-medium mb-3">
-              Target PDF Size
+              Compression Quality Preset
             </label>
-            <div className="flex w-full">
-              <span className={`flex items-center justify-center min-w-[70px] px-3 border border-r-0 rounded-l-lg text-sm font-medium ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300 bg-gray-100'}`}>
-                PDF Size:
-              </span>
-              <input 
-                type="number" 
-                min="1" 
-                value={targetSizeKb} 
-                onChange={(e) => setTargetSizeKb(parseInt(e.target.value) || 1)} 
-                className={`flex-1 p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border border-gray-300'}`} 
-                style={{ borderRightWidth: 0, borderLeftWidth: 0 }}
-              />
-              <span className={`flex items-center justify-center min-w-[50px] px-3 rounded-r-lg font-semibold text-sm ${darkMode ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white'}`}>
-                Kb
-              </span>
-            </div>
+            <select 
+              value={compressionQuality} 
+              onChange={(e) => setCompressionQuality(e.target.value)} 
+              className={`w-full p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border border-gray-300'}`}
+            >
+              {Object.entries(qualitySettings).map(([key, setting]) => (
+                <option key={key} value={key}>
+                  {setting.desc}
+                </option>
+              ))}
+            </select>
             <p className="text-xs opacity-70 mt-2">
-              Target size: The PDF file will be compressed to approximately this size in Kilobytes (Kb).
+              Choose a preset quality. Higher quality results in a larger file size.
             </p>
           </div>
         )}
@@ -859,8 +855,8 @@ function App() {
   const [targetWidth, setTargetWidth] = useState(800);
   const [targetHeight, setTargetHeight] = useState(600);
   const [splitPages, setSplitPages] = useState("");
-  // STATE BARU: targetSizeKb untuk kompresi, default 300 Kb
-  const [targetSizeKb, setTargetSizeKb] = useState(300); 
+  // STATE LAMA targetSizeKb DIHAPUS, DIGANTI DENGAN compressionQuality
+  const [compressionQuality, setCompressionQuality] = useState('ebook'); // <-- PERUBAHAN
   const [signatureBlob, setSignatureBlob] = useState(null);
   const [signaturePosition, setSignaturePosition] = useState({ x: 40, y: 40, page: 1 }); 
   const [signatureSize, setSignatureSize] = useState({ width: 120, height: 50 }); 
@@ -873,6 +869,16 @@ function App() {
   const canvasRefs = useRef([]); 
   const canvasContainerRef = useRef(null);
   const [lastConversionType, setLastConversionType] = useState('pdf-to-word');
+
+  // PERUBAHAN: Menambahkan qualitySettings
+  const qualitySettings = useMemo(() => ({
+    'screen': { value: '/screen', desc: 'Screen (Smallest - 72 dpi)' },
+    'ebook': { value: '/ebook', desc: 'eBook (Medium - 150 dpi)' },
+    'printer': { value: '/printer', desc: 'Printer (High - 300 dpi)' },
+    'prepress': { value: '/prepress', desc: 'Prepress (Highest - 300 dpi + color)' },
+    'default': { value: '/default', desc: 'Default (Standard compression)' },
+  }), []);
+
 
   useEffect(() => {
     canvasRefs.current = pdfPagesData.map((_, i) => canvasRefs.current[i] || React.createRef());
@@ -975,7 +981,7 @@ function App() {
     setSignaturePosition({ x: 40, y: 40, page: 1 }); // Reset to Top-Left
     setSignatureSize({ width: 120, height: 50 });
     setSplitPages("");
-    setTargetSizeKb(300); // RESET TARGET SIZE KB
+    setCompressionQuality('ebook'); // <-- PERUBAHAN: RESET COMPRESSION QUALITY
     setError('');
   }, [currentConversionType]);
 
@@ -1087,144 +1093,185 @@ function App() {
   // FUNGSI getCompressionPreset DIHAPUS
 
   const convertFile = async (fileObj, payload = null) => {
-    const formData = new FormData();
-    let endpoint = '';
-    formData.append('file', fileObj.file);
-   if (currentConversionType === "add-signature" && payload) {
-    
-    // Logika pengiriman Add Signature (Bottom-Left coordinate system)
+  const formData = new FormData();
+  let endpoint = '';
+  // always append the file
+  formData.append('file', fileObj.file);
+
+  if (currentConversionType === "add-signature" && payload) {
+    // ... existing add-signature logic unchanged ...
     const pageIndex = payload.page - 1;
     const page = pdfPagesData[pageIndex];
 
     if (!page) {
-        throw new Error("Halaman PDF tidak ditemukan.");
+      throw new Error("Halaman PDF tidak ditemukan.");
     }
-    
+
     if (pdfRenderScale <= 0 || isNaN(pdfRenderScale)) {
-         throw new Error("Skala rendering PDF tidak valid. Coba muat ulang PDF.");
+      throw new Error("Skala rendering PDF tidak valid. Coba muat ulang PDF.");
     }
 
     const viewport = page.getViewport({ scale: 1 });
     const pdfWidth_D = viewport.width;
     const pdfHeight_D = viewport.height;
 
-    // payload.x/y are percentages relative to rendered canvas area (top-left origin)
-    // Convert percent->pdf units using intrinsic pdf dimensions
     const X_topLeft_pdf_unit = (payload.x / 100) * pdfWidth_D;
     const Y_topLeft_top_unit = (payload.y / 100) * pdfHeight_D;
-    
-    // payload.width/height are DOM pixels -> convert to pdf units by dividing by render scale
+
     const pdfSignatureWidth = payload.width / pdfRenderScale;
     const pdfSignatureHeight = payload.height / pdfRenderScale;
-    
-    // Convert top-left to bottom-left coordinate used by backend
+
     const Y_bottom_top_unit = Y_topLeft_top_unit + pdfSignatureHeight;
     let Y_bottom_pdf_unit = pdfHeight_D - Y_bottom_top_unit;
-    
+
     let finalX = X_topLeft_pdf_unit;
     const maxX = pdfWidth_D - pdfSignatureWidth;
-    finalX = Math.min(finalX, maxX); 
-    finalX = Math.max(0, finalX); 
-    
+    finalX = Math.min(finalX, maxX);
+    finalX = Math.max(0, finalX);
+
     let finalY = Y_bottom_pdf_unit;
-    finalY = Math.max(0, finalY); 
-    
+    finalY = Math.max(0, finalY);
+
     const finalWidth = Math.max(pdfSignatureWidth, 10);
     const finalHeight = Math.max(pdfSignatureHeight, 10);
-    
+
     const roundedX = finalX.toFixed(2);
     const roundedY = finalY.toFixed(2);
     const roundedWidth = finalWidth.toFixed(2);
     const roundedHeight = finalHeight.toFixed(2);
-    const roundedPdfHeight = pdfHeight_D.toFixed(2); 
+    const roundedPdfHeight = pdfHeight_D.toFixed(2);
 
-    formData.append("x", roundedX.toString()); 
-    formData.append("y", roundedY.toString()); 
-    formData.append("pdf_height", roundedPdfHeight.toString()); 
+    formData.append("x", roundedX.toString());
+    formData.append("y", roundedY.toString());
+    formData.append("pdf_height", roundedPdfHeight.toString());
     formData.append("page", payload.page.toString());
     formData.append("width", roundedWidth.toString());
     formData.append("height", roundedHeight.toString());
     formData.append("signature", signatureBlob, "signature.png");
 
     endpoint = "/add-signature";
-
-    } else {
-      switch (currentConversionType) {
-        case 'pdf-to-word': endpoint = '/convert-pdf-to-word'; break;
-        case 'word-to-pdf': endpoint = '/convert-word-to-pdf'; break;
-        case 'jpg-to-pdf': endpoint = '/convert-jpg-to-pdf'; break;
-        case 'pdf-to-jpg': endpoint = '/convert-pdf-to-jpg'; break;
-        case 'png-to-jpg': endpoint = '/convert-png-to-jpg'; break;
-        case 'excel-to-pdf': endpoint = '/convert-excel-to-pdf'; break;
-        case 'resize-file':
-          formData.append('width', targetWidth.toString());
-          formData.append('height', targetHeight.toString());
-          endpoint = '/resize-jpg'; break;
-        case 'convert-pdf-version':
-          formData.append('version', pdfVersion);
-          endpoint = '/convert-pdf-version'; break;
-        case 'merge-pdf': throw new Error('merge-pdf should be handled in bulk');
-        case 'compress-pdf': 
-          // Mengirim target ukuran file dalam Kilobyte (targetSizeKb)
-          formData.append('target_size_kb', payload.targetSizeKb.toString()); 
-          endpoint = '/compress-pdf'; 
-          break;
-        default: throw new Error('Unsupported conversion type');
-      }
-    }
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, { method: 'POST', body: formData });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Conversion failed: ${errorText}`);
-    }
-    const blob = await response.blob();
-    const downloadUrl = URL.createObjectURL(blob);
-    let convertedName, outputFormatUsed;
+  } else {
     switch (currentConversionType) {
-      case 'pdf-to-word': convertedName = fileObj.name.replace(/\.pdf$/i, '.docx'); outputFormatUsed = 'docx'; break;
-      case 'word-to-pdf': convertedName = fileObj.name.replace(/\.(doc|docx)$/i, '.pdf'); outputFormatUsed = 'pdf'; break;
-      case 'jpg-to-pdf': convertedName = fileObj.name.replace(/\.(jpeg|jpg)$/i, '.pdf'); outputFormatUsed = 'pdf'; break;
-      case 'pdf-to-jpg': convertedName = fileObj.name.replace(/\.pdf$/i, '.jpg'); outputFormatUsed = 'jpg'; break;
-      case 'png-to-jpg': convertedName = fileObj.name.replace(/\.png$/i, '.jpg'); outputFormatUsed = 'jpg'; break;
-      case 'excel-to-pdf': convertedName = fileObj.name.replace(/\.(xlsx|xls)$/i, '.pdf'); outputFormatUsed = 'pdf'; break;
+      case 'pdf-to-word': endpoint = '/convert-pdf-to-word'; break;
+      case 'word-to-pdf': endpoint = '/convert-word-to-pdf'; break;
+      case 'jpg-to-pdf': endpoint = '/convert-jpg-to-pdf'; break;
+      case 'pdf-to-jpg': endpoint = '/convert-pdf-to-jpg'; break;
+      case 'png-to-jpg': endpoint = '/convert-png-to-jpg'; break;
+      case 'excel-to-pdf': endpoint = '/convert-excel-to-pdf'; break;
       case 'resize-file':
-        convertedName = fileObj.name.replace(/\.(jpe?g|png)$/i, '_resized.jpg');
-        outputFormatUsed = 'jpg';
+        formData.append('width', targetWidth.toString());
+        formData.append('height', targetHeight.toString());
+        endpoint = '/resize-jpg';
         break;
-      case 'convert-pdf-version': convertedName = fileObj.name.replace(/\.pdf$/i, `_v${pdfVersion}.pdf`); outputFormatUsed = 'pdf'; break;
-      case 'add-signature': convertedName = fileObj.name.replace(/\.pdf$/i, '_signed.pdf'); outputFormatUsed = 'pdf'; break;
-      case 'compress-pdf': convertedName = fileObj.name.replace(/\.pdf$/i, '_compressed.pdf'); outputFormatUsed = 'pdf'; break;
-      default:
-        convertedName = fileObj.name;
-        outputFormatUsed = getFileExtension(fileObj.name);
+      case 'convert-pdf-version':
+        formData.append('version', pdfVersion);
+        endpoint = '/convert-pdf-version';
+        break;
+      case 'split-pdf':
+          // ensure pages parameter is appended (prefer payload.pages, fallback to splitPages state)
+          {
+          const pagesParam = payload && payload.pages ? payload.pages : splitPages;
+          if (!pagesParam) throw new Error('Pages parameter is required for split-pdf');
+          formData.append('pages', pagesParam);
+          endpoint = '/split-pdf';
+        }
+        break;
+      case 'merge-pdf': throw new Error('merge-pdf should be handled in bulk');
+      case 'compress-pdf':
+          // Mengirim nilai Ghostscript preset
+          {
+          const qualityKey = (payload && payload.qualityKey) ? payload.qualityKey : compressionQuality; // <-- PERUBAHAN
+          const ghostscriptValue = qualitySettings[qualityKey]?.value || '/ebook'; // <-- PERUBAHAN
+          formData.append('quality_preset', ghostscriptValue); // <-- PERUBAHAN
+          endpoint = '/compress-pdf';
+        }
+        break;
+      default: throw new Error('Unsupported conversion type');
     }
-    return {
-      originalName: fileObj.name, convertedName, outputFormat: outputFormatUsed,
-      fileSize: `${(blob.size / 1024 / 1024).toFixed(2)} MB`,
-      timestamp: new Date().toLocaleString(), downloadUrl
-    };
+  }
+      // Helper: attempt to read response body intelligently
+  const readResponseBody = async (res) => {
+    try {
+      const ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        const json = await res.json();
+        // prefer using a specific error message if provided
+        if (json && typeof json === 'object') {
+          if (json.error) return JSON.stringify(json.error);
+          return JSON.stringify(json);
+        }
+        return JSON.stringify(json);
+      } else {
+        const text = await res.text();
+        return text;
+      }
+    } catch (e) {
+      console.debug('Failed to read response body', e);
+      return '';
+    }
   };
 
-  const mergePdfFiles = async () => {
-    const formData = new FormData();
-    selectedFiles.forEach((fileObj) => formData.append('pdfFiles', fileObj.file));
-    const response = await fetch(`${API_BASE_URL}/merge-pdf`, { method: 'POST', body: formData });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Merge failed: ${errorText}`);
-    }
-    const blob = await response.blob();
-    const downloadUrl = URL.createObjectURL(blob);
-    const convertedName = 'merged.pdf';
-    return {
-      originalName: 'Multiple PDFs',
-      convertedName,
-      outputFormat: 'pdf',
-      fileSize: `${(blob.size / 1024 / 1024).toFixed(2)} MB`,
-      timestamp: new Date().toLocaleString(),
-      downloadUrl
-    };
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, { method: 'POST', body: formData });
+  } catch (networkErr) {
+    // Network / CORS / DNS / offline errors
+    console.error('Network error when calling conversion endpoint', networkErr);
+    throw new Error(`Network error when calling ${endpoint}: ${networkErr.message}`);
+  }
+
+  if (!response.ok) {
+    // Try to extract meaningful error body (json/text) and include status
+    const bodyText = await readResponseBody(response);
+    // Log details for debugging
+    console.debug('Conversion response error', {
+      endpoint,
+      status: response.status,
+      statusText: response.statusText,
+      bodyText,
+      headers: Array.from(response.headers.entries()),
+    });
+    const messageParts = [`Conversion failed: ${response.status} ${response.statusText}`];
+    if (bodyText) messageParts.push(`- ${bodyText}`);
+    throw new Error(messageParts.join(' '));
+  }
+
+  const blob = await response.blob();
+  const downloadUrl = URL.createObjectURL(blob);
+  let convertedName, outputFormatUsed;
+  switch (currentConversionType) {
+    case 'pdf-to-word': convertedName = fileObj.name.replace(/\.pdf$/i, '.docx'); outputFormatUsed = 'docx'; break;
+    case 'word-to-pdf': convertedName = fileObj.name.replace(/\.(doc|docx)$/i, '.pdf'); outputFormatUsed = 'pdf'; break;
+    case 'jpg-to-pdf': convertedName = fileObj.name.replace(/\.(jpeg|jpg)$/i, '.pdf'); outputFormatUsed = 'pdf'; break;
+    case 'pdf-to-jpg': convertedName = fileObj.name.replace(/\.pdf$/i, '.jpg'); outputFormatUsed = 'jpg'; break;
+    case 'png-to-jpg': convertedName = fileObj.name.replace(/\.png$/i, '.jpg'); outputFormatUsed = 'jpg'; break;
+    case 'excel-to-pdf': convertedName = fileObj.name.replace(/\.(xlsx|xls)$/i, '.pdf'); outputFormatUsed = 'pdf'; break;
+    case 'resize-file':
+      convertedName = fileObj.name.replace(/\.(jpe?g|png)$/i, '_resized.jpg');
+      outputFormatUsed = 'jpg';
+      break;
+    case 'convert-pdf-version': convertedName = fileObj.name.replace(/\.pdf$/i, `_v${pdfVersion}.pdf`); outputFormatUsed = 'pdf'; break;
+    case 'add-signature': convertedName = fileObj.name.replace(/\.pdf$/i, '_signed.pdf'); outputFormatUsed = 'pdf'; break;
+    case 'compress-pdf': convertedName = fileObj.name.replace(/\.pdf$/i, '_compressed.pdf'); outputFormatUsed = 'pdf'; break;
+    case 'split-pdf':
+      if (blob.type.includes('zip')) {
+        convertedName = fileObj.name.replace(/\.pdf$/i, '_split.zip');
+        outputFormatUsed = 'zip';
+      } else {
+        convertedName = fileObj.name.replace(/\.pdf$/i, '_split.pdf');
+        outputFormatUsed = 'pdf';
+      }
+      break;
+    default:
+      convertedName = fileObj.name;
+      outputFormatUsed = getFileExtension(fileObj.name);
+  }
+  return {
+    originalName: fileObj.name, convertedName, outputFormat: outputFormatUsed,
+    fileSize: `${(blob.size / 1024 / 1024).toFixed(2)} MB`,
+    timestamp: new Date().toLocaleString(), downloadUrl
   };
+};
 
   const splitPdfFile = async () => {
     if (selectedFiles.length === 0) throw new Error('No file selected');
@@ -1235,29 +1282,17 @@ function App() {
     const formData = new FormData();
     formData.append('file', fileObj.file);
     formData.append('pages', splitPages);
-    const response = await fetch(`${API_BASE_URL}/split-pdf`, { 
-      method: 'POST', 
-      body: formData 
-    });
-
+    const response = await fetch(`${API_BASE_URL}/split-pdf`, { method: 'POST', body: formData });
     if (!response.ok) {
-      let errorMessage = `Split failed: ${response.statusText}`;
       try {
-        const contentType = response.headers.get('content-type');  // ✅ CEK content-type DULU
-        if (contentType && contentType.includes('application/json')) {
-          const errorJson = await response.json();  // ✅ Parse JSON hanya jika content-type = JSON
-          errorMessage = errorJson.error || errorMessage;
-        } else {
-          const errorText = await response.text();  // ✅ Parse text jika bukan JSON
-          errorMessage = errorText || errorMessage;
-        }
+        const errorJson = await response.json();
+        throw new Error(errorJson.error || `Split failed: ${response.statusText}`);
       } catch(e) {
-        console.error('Error parsing error response:', e);
+        const errorText = await response.text();
+        throw new Error(`Split failed: ${errorText || e.message}`);
       }
-      throw new Error(errorMessage);
     }
-
-    const blob = await response.blob();  // ✅ Langsung baca blob karena response belum di-consume
+    const blob = await response.blob();
     const downloadUrl = URL.createObjectURL(blob);
     let convertedName, outputFormatUsed;
     if (blob.type.includes('zip')) {
@@ -1355,7 +1390,7 @@ function App() {
         { type: 'png-to-jpg', name: 'PNG to JPG' },
         { type: 'pdf-to-jpg', name: 'PDF to JPG' },
         { type: 'resize-file', name: 'Resize File' },
-      ]}
+      ]} 
     ];
 
   // --- Komponen PDF Canvas dan SignatureOverlay Dihilangkan untuk Keringkasan ---
@@ -1442,62 +1477,54 @@ function App() {
           }
           catch (err) { clearInterval(interval); console.error('Merge error:', err); setError(`Merge failed: ${err.message}`); }
       } else if (['split-pdf', 'compress-pdf', 'add-signature'].includes(currentConversionType)) { 
-  // Single file conversions
-  if (currentConversionType === 'split-pdf' && !splitPages) {
-    setError('Please enter the page range to split (e.g., "1-3, 5").');
-    setTimeout(() => setError(''), 3000);
-    setIsConverting(false);
-    return;
-  }
+        // Single file conversions
+        if (currentConversionType === 'split-pdf' && !splitPages) {
+          setError('Please enter the page range to split (e.g., "1-3, 5").');
+          setTimeout(() => setError(''), 3000);
+          setIsConverting(false);
+          return;
+        }
 
-  if (currentConversionType === 'compress-pdf' && targetSizeKb <= 0) {
-      setError('Target PDF size must be greater than 0 Kb.');
-      setTimeout(() => setError(''), 3000);
-      setIsConverting(false);
-      return;
-  }
-  
-  const interval = setInterval(() => setConversionProgress(prev => prev >= 95 ? 95 : prev + 1), 50);
-  
-  try { 
-      let result;
-      
-      if (currentConversionType === 'split-pdf') {
-          // Panggil fungsi khusus untuk split PDF
-          result = await splitPdfFile();
-      } else {
-          // Untuk add-signature dan compress-pdf
-          const fileObj = selectedFiles[0];
-          let payload = null;
-          
-          if (currentConversionType === 'add-signature') {
-              payload = { 
-                  x: signaturePosition.x, 
-                  y: signaturePosition.y, 
-                  page: signaturePosition.page,
-                  width: signatureSize.width, 
-                  height: signatureSize.height,
-              };
-          } else if (currentConversionType === 'compress-pdf') {
-              payload = { targetSizeKb: targetSizeKb };
-          }
-          
-          result = await convertFile(fileObj, payload);
-      }
-      
-      clearInterval(interval); 
-      setConversionProgress(100); 
-      results = [result]; 
-      setHistory(prev => [result, ...prev.slice(0, 19)]); 
-      setLastConversionType(currentConversionType);
-  }
-  catch (err) { 
-      clearInterval(interval); 
-      console.error('Conversion error:', err); 
-      setError(`Conversion failed: ${err.message}`); 
-  }
+        // PERUBAHAN: Validasi targetSizeKb dihapus karena menggunakan preset
 
-} else { 
+        
+        const interval = setInterval(() => setConversionProgress(prev => prev >= 95 ? 95 : prev + 1), 50);
+        
+        const fileObj = selectedFiles[0];
+        let payload = null;
+        if (currentConversionType === 'add-signature') {
+             // Logic untuk Add Signature
+             payload = { 
+                x: signaturePosition.x, 
+                y: signaturePosition.y, 
+                page: signaturePosition.page,
+                width: signatureSize.width, 
+                height: signatureSize.height,
+            };
+        } else if (currentConversionType === 'split-pdf') {
+            // Logic untuk Split PDF
+            payload = { pages: splitPages };
+        } else if (currentConversionType === 'compress-pdf') {
+            // Logic untuk Compress PDF
+            payload = { qualityKey: compressionQuality }; // <-- PERUBAHAN: Mengirim qualityKey
+        }
+
+
+        try { 
+            const result = await convertFile(fileObj, payload); 
+            clearInterval(interval); 
+            setConversionProgress(100); 
+            results = [result]; 
+            setHistory(prev => [result, ...prev.slice(0, 19)]); 
+            setLastConversionType(currentConversionType);
+        }
+        catch (err) { 
+            clearInterval(interval); 
+            console.error('Conversion error:', err); 
+            setError(`Conversion failed: ${err.message}`); 
+        }
+
+      } else { 
         // Multiple file conversions
         for (let i = 0; i < selectedFiles.length; i++) {
           setConversionProgress(((i + 0.5) / selectedFiles.length) * 100);
@@ -1546,7 +1573,7 @@ function App() {
         setSignaturePosition({ x: 40, y: 40, page: 1 }); 
         setSignatureSize({ width: 120, height: 50 });
         setSplitPages("");
-        setTargetSizeKb(300); // RESET TARGET SIZE KB
+        setCompressionQuality('ebook'); // <-- PERUBAHAN: RESET COMPRESSION QUALITY
         return;
     }
     
@@ -1564,7 +1591,7 @@ function App() {
     setSignaturePosition({ x: 40, y: 40, page: 1 });
     setSignatureSize({ width: 120, height: 50 });
     setSplitPages("");
-    setTargetSizeKb(300); // RESET TARGET SIZE KB
+    setCompressionQuality('ebook'); // <-- PERUBAHAN: RESET COMPRESSION QUALITY
   };
 
   const handleBackToHome = () => {
@@ -1581,7 +1608,7 @@ function App() {
     setSignaturePosition({ x: 40, y: 40, page: 1 });
     setSignatureSize({ width: 120, height: 50 });
     setSplitPages("");
-    setTargetSizeKb(300); // RESET TARGET SIZE KB
+    setCompressionQuality('ebook'); // <-- PERUBAHAN: RESET COMPRESSION QUALITY
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -1836,8 +1863,9 @@ function App() {
                       setTargetHeight={setTargetHeight} 
                       splitPages={splitPages}
                       setSplitPages={setSplitPages}
-                      targetSizeKb={targetSizeKb} 
-                      setTargetSizeKb={setTargetSizeKb} 
+                      compressionQuality={compressionQuality} // <-- BARU
+                      setCompressionQuality={setCompressionQuality} // <-- BARU
+                      qualitySettings={qualitySettings} // <-- BARU
                       getConversionTitle={getConversionTitle} 
                       getConversionDescription={getConversionDescription} 
                       pdfPages={pdfPagesData} 
