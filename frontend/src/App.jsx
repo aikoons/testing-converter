@@ -1243,7 +1243,7 @@ function App() {
     case 'pdf-to-word': convertedName = fileObj.name.replace(/\.pdf$/i, '.docx'); outputFormatUsed = 'docx'; break;
     case 'word-to-pdf': convertedName = fileObj.name.replace(/\.(doc|docx)$/i, '.pdf'); outputFormatUsed = 'pdf'; break;
     case 'jpg-to-pdf': convertedName = fileObj.name.replace(/\.(jpeg|jpg)$/i, '.pdf'); outputFormatUsed = 'pdf'; break;
-    case 'pdf-to-jpg': convertedName = fileObj.name.replace(/\.pdf$/i, '.jpg'); outputFormatUsed = 'jpg'; break;
+    case 'pdf-to-jpg': convertedName = fileObj.name.replace(/\.pdf$/i, '.zip'); outputFormatUsed = 'zip'; break;
     case 'png-to-jpg': convertedName = fileObj.name.replace(/\.png$/i, '.jpg'); outputFormatUsed = 'jpg'; break;
     case 'excel-to-pdf': convertedName = fileObj.name.replace(/\.(xlsx|xls)$/i, '.pdf'); outputFormatUsed = 'pdf'; break;
     case 'resize-file':
