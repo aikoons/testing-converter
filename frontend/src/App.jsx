@@ -1246,10 +1246,7 @@ function App() {
     case 'pdf-to-jpg': convertedName = fileObj.name.replace(/\.pdf$/i, '.zip'); outputFormatUsed = 'zip'; break;
     case 'png-to-jpg': convertedName = fileObj.name.replace(/\.png$/i, '.jpg'); outputFormatUsed = 'jpg'; break;
     case 'excel-to-pdf': convertedName = fileObj.name.replace(/\.(xlsx|xls)$/i, '.pdf'); outputFormatUsed = 'pdf'; break;
-    case 'resize-file':
-      convertedName = fileObj.name.replace(/\.(jpe?g|png)$/i, '_resized.jpg');
-      outputFormatUsed = 'jpg';
-      break;
+    case 'resize-file': convertedName = fileObj.name.replace(/\.(jpe?g|png)$/i, '_resized.jpg'); outputFormatUsed = 'jpg'; break;
     case 'convert-pdf-version': convertedName = fileObj.name.replace(/\.pdf$/i, `_v${pdfVersion}.pdf`); outputFormatUsed = 'pdf'; break;
     case 'add-signature': convertedName = fileObj.name.replace(/\.pdf$/i, '_signed.pdf'); outputFormatUsed = 'pdf'; break;
     case 'compress-pdf': convertedName = fileObj.name.replace(/\.pdf$/i, '_compressed.pdf'); outputFormatUsed = 'pdf'; break;
@@ -1306,6 +1303,64 @@ function App() {
       originalName: fileObj.name,
       convertedName,
       outputFormat: outputFormatUsed,
+      fileSize: `${(blob.size / 1024 / 1024).toFixed(2)} MB`,
+      timestamp: new Date().toLocaleString(),
+      downloadUrl
+    };
+  };
+
+  // Tambahkan fungsi ini SETELAH splitPdfFile() dan SEBELUM getConversionIcon()
+
+  const mergePdfFiles = async () => {
+    if (selectedFiles.length < 2) {
+      throw new Error('Minimal 2 file PDF diperlukan untuk merge');
+    }
+
+    const formData = new FormData();
+    
+    // Append semua file PDF dengan field name 'pdfFiles'
+    selectedFiles.forEach((fileObj) => {
+      formData.append('pdfFiles', fileObj.file);
+    });
+
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}/merge-pdf`, { 
+        method: 'POST', 
+        body: formData 
+      });
+    } catch (networkErr) {
+      console.error('Network error saat merge PDF:', networkErr);
+      throw new Error(`Network error: ${networkErr.message}`);
+    }
+
+    if (!response.ok) {
+      let errorMessage = `Merge failed: ${response.status} ${response.statusText}`;
+      try {
+        const errorJson = await response.json();
+        if (errorJson.error) {
+          errorMessage += ` - ${errorJson.error}`;
+        }
+      } catch (e) {
+        const errorText = await response.text();
+        if (errorText) {
+          errorMessage += ` - ${errorText}`;
+        }
+      }
+      throw new Error(errorMessage);
+    }
+
+    const blob = await response.blob();
+    const downloadUrl = URL.createObjectURL(blob);
+    
+    // Generate nama file hasil merge
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const convertedName = `merged-${timestamp}.pdf`;
+
+    return {
+      originalName: `${selectedFiles.length} PDF files`,
+      convertedName,
+      outputFormat: 'pdf',
       fileSize: `${(blob.size / 1024 / 1024).toFixed(2)} MB`,
       timestamp: new Date().toLocaleString(),
       downloadUrl
