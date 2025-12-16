@@ -872,11 +872,11 @@ function App() {
 
   // PERUBAHAN: Menambahkan qualitySettings
   const qualitySettings = useMemo(() => ({
-    'screen': { value: '/screen', desc: 'Screen (Smallest - 72 dpi)' },
-    'ebook': { value: '/ebook', desc: 'eBook (Medium - 150 dpi)' },
-    'printer': { value: '/printer', desc: 'Printer (High - 300 dpi)' },
-    'prepress': { value: '/prepress', desc: 'Prepress (Highest - 300 dpi + color)' },
-    'default': { value: '/default', desc: 'Default (Standard compression)' },
+    'screen': { value: 'screen', desc: 'Screen (Smallest - 72 dpi)' },
+    'ebook': { value: 'ebook', desc: 'eBook (Medium - 150 dpi)' },
+    'printer': { value: 'printer', desc: 'Printer (High - 300 dpi)' },
+    'prepress': { value: 'prepress', desc: 'Prepress (Highest - 300 dpi + color)' },
+    'default': { value: 'default', desc: 'Default (Standard compression)' },
   }), []);
 
 
